@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-heebo: 'Heebo', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  background: #0A0A0F;
+  color: #F8F9FA;
+  font-family: var(--font-heebo), sans-serif;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Prevent overscroll bounce on iOS */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #222831;
+  border-radius: 2px;
+}
+
+/* Remove default number input spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Safe area utilities */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Keyboard focus indicators */
+:focus-visible {
+  outline: 2px solid #D4A843;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default outline only when using mouse */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Card drag — disable text selection */
+.swipe-card {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+/* Smooth page transitions */
+@layer utilities {
+  .page-enter {
+    animation: fadeIn 0.25s ease-out;
+  }
+}
+
+/* ── Accessibility modes (IS 5568 / WCAG 2.1) ── */
+html.a11y-high-contrast {
+  filter: contrast(1.8) !important;
+}
+html.a11y-grayscale {
+  filter: grayscale(100%) !important;
+}
+html.a11y-high-contrast.a11y-grayscale {
+  filter: contrast(1.8) grayscale(100%) !important;
+}
+html.a11y-reduce-motion *,
+html.a11y-reduce-motion *::before,
+html.a11y-reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+html.a11y-underline-links a {
+  text-decoration: underline !important;
+}
+html.a11y-text-lg {
+  font-size: 112.5%;
+}
+html.a11y-text-xl {
+  font-size: 125%;
+}

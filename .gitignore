@@ -1,0 +1,3 @@
+# Monorepo root — common noise (subprojects keep their own .gitignore)
+.DS_Store
+.claude/

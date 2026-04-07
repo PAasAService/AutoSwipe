@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Env and local DB
+.env
+.env.local
+.env.*.local
+*.db
+*.db-journal
+
+# LearnedSignal debug dumps (enable with LEARNED_SIGNAL_FILE_LOG)
+LearnedSignalsLogs/
+
+# Debug / OS
+.DS_Store
+*.log
+npm-debug.log*
+
+# TypeScript
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/

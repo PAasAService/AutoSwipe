@@ -1,0 +1,348 @@
+<mxfile host="app.diagrams.net" modified="2026-03-22" version="21.6.5">
+  <diagram id="autoswipe-arch" name="AutoSwipe Architecture">
+    <mxGraphModel dx="1654" dy="1169" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--         LAYER BACKGROUND BANDS          -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- Layer 1: Frontend -->
+        <mxCell id="bg1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="1650" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl1" value="🖥️  FRONTEND — Next.js 14 App Router  (Pages + Components + State)" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=1;fontSize=14;fontColor=#1565C0;" vertex="1" parent="1">
+          <mxGeometry x="32" y="24" width="700" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Layer 2: API -->
+        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="430" width="1650" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl2" value="🔌  API LAYER — Next.js Route Handlers  (/src/app/api)" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=1;fontSize=14;fontColor=#E65100;" vertex="1" parent="1">
+          <mxGeometry x="32" y="434" width="600" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Layer 3: Business Logic -->
+        <mxCell id="bg3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#4527A0;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="590" width="1650" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl3" value="⚙️  BUSINESS LOGIC — /src/lib" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=1;fontSize=14;fontColor=#4527A0;" vertex="1" parent="1">
+          <mxGeometry x="32" y="594" width="400" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Layer 4: Data -->
+        <mxCell id="bg4" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="750" width="1650" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl4" value="🗄️  DATA LAYER — Prisma ORM + SQLite (dev) / PostgreSQL (prod)" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=1;fontSize=14;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="32" y="754" width="700" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--                  PAGES                  -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="p1" value="/ Landing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="120" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="/login · /signup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="170" y="60" width="140" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="/onboarding" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="130" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p4" value="⭐ /swipe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="460" y="60" width="110" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p5" value="/listing/[id]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="580" y="60" width="130" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p6" value="/favorites" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="60" width="120" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p7" value="/compare" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="850" y="60" width="120" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p8" value="/messages · /[threadId]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="980" y="60" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p9" value="/dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="60" width="130" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p10" value="/settings/preferences" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="60" width="170" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p11" value="/listing/create" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="60" width="150" height="46" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--               COMPONENTS                -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="compLabel" value="Components  (/src/components)" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontStyle=3;fontSize=11;fontColor=#2E7D32;" vertex="1" parent="1">
+          <mxGeometry x="40" y="158" width="280" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1" value="SwipeCard&#xa;+ PriceDelta Badge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="182" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="PriceAnalysisCard&#xa;(gauge + range)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="205" y="182" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="OwnershipCostCard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="370" y="182" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="PremiumGate&#xa;(feature lock)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="535" y="182" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" value="CostBreakdownChart&#xa;(recharts pie)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="685" y="182" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" value="FavoritesList&#xa;(optimistic UI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="855" y="182" width="145" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c7" value="Providers&#xa;(SessionProvider)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="182" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c8" value="Navbar / BottomNav" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1175" y="182" width="155" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--              ZUSTAND STORES             -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="storeLabel" value="Zustand Stores  (/src/store)" style="text;html=1;align=left;strokeColor=none;fillColor=none;fontStyle=3;fontSize=11;fontColor=#4527A0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="283" width="240" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="authStore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#4527A0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="306" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="swipeStore&#xa;(feed + index + reset)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#4527A0;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="190" y="306" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="preferencesStore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#4527A0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="360" y="306" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="NextAuth JWT Session" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#4527A0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="525" y="306" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 3rd party -->
+        <mxCell id="s5" value="Framer Motion&#xa;(swipe animation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD9;strokeColor=#880E4F;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="306" width="155" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s6" value="react-hot-toast" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD9;strokeColor=#880E4F;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="885" y="306" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="s7" value="Tailwind CSS + RTL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD9;strokeColor=#880E4F;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="306" width="145" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--               API ROUTES                -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="a1" value="POST /api/auth/register" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="472" width="195" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="GET /api/users/me&#xa;PUT /api/users/preferences" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="245" y="472" width="195" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="GET · POST /api/listings&#xa;PATCH · DELETE /api/listings/[id]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="450" y="472" width="225" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a4" value="POST /api/swipes&#xa;(+ update LearnedSignal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="685" y="472" width="195" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a5" value="⭐ GET /api/recommendations&#xa;(personalized ranked feed)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCC80;strokeColor=#E65100;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="890" y="472" width="215" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a6" value="GET · POST /api/favorites" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="472" width="190" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="a7" value="GET · POST /api/messages&#xa;GET · POST /api/messages/[threadId]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE0B2;strokeColor=#E65100;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1315" y="472" width="240" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--            BUSINESS LOGIC / LIB         -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="b1" value="NextAuth v5&#xa;auth.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="630" width="145" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="⭐ Prisma Client&#xa;db.ts (singleton)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="630" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="⭐ Recommendation Engine&#xa;engine.ts + scorer.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="365" y="630" width="190" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b4" value="Cost Calculator&#xa;cost-calculator.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="565" y="630" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b5" value="⭐ Price Intelligence&#xa;price-intelligence.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#3949AB;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="745" y="630" width="185" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b6" value="Feature Flags&#xa;subscription.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="940" y="630" width="165" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b7" value="Israeli Constants&#xa;cities.ts + cars.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1115" y="630" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="b8" value="Types&#xa;src/types/index.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1295" y="630" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--               DATABASE                  -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="d0" value="Prisma ORM" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="778" width="120" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="d1" value="User" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="180" y="782" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="Listing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="290" y="782" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" value="Swipe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="782" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" value="Favorite" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="510" y="782" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" value="MessageThread&#xa;+ Message" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="620" y="782" width="130" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" value="UserPreferences" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#2E7D32;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="760" y="782" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d7" value="LearnedSignal&#xa;(behavioral AI)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="782" width="150" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="d8" value="SQLite  dev.db&#xa;→ PostgreSQL (prod)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#A5D6A7;strokeColor=#2E7D32;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="778" width="165" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--          ARROWS — KEY DATA FLOWS        -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- /swipe → /api/recommendations -->
+        <mxCell id="e1" value="fetch feed" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;fontColor=#1565C0;fontSize=10;fontStyle=1;" edge="1" source="p4" target="a5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /swipe → POST /api/swipes -->
+        <mxCell id="e2" value="record swipe" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;fontColor=#1565C0;fontSize=10;" edge="1" source="p4" target="a4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /listing/[id] → /api/listings -->
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;" edge="1" source="p5" target="a3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /favorites → /api/favorites -->
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;" edge="1" source="p6" target="a6" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /messages → /api/messages -->
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;" edge="1" source="p8" target="a7" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /api/recommendations → Recommendation Engine -->
+        <mxCell id="e6" value="score + rank" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E65100;fontColor=#E65100;fontSize=10;fontStyle=1;" edge="1" source="a5" target="b3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /api/swipes → Prisma (LearnedSignal) -->
+        <mxCell id="e7" value="write signal" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E65100;fontColor=#E65100;fontSize=10;" edge="1" source="a4" target="b2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Recommendation Engine → Prisma -->
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4527A0;" edge="1" source="b3" target="b2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Prisma → DB -->
+        <mxCell id="e9" value="query" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E7D32;fontColor=#2E7D32;fontSize=10;fontStyle=1;" edge="1" source="b2" target="d0" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- DB cylinder → tables -->
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E7D32;" edge="1" source="d0" target="d1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- PriceAnalysisCard → price-intelligence -->
+        <mxCell id="e11" value="estimate fair price" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E7D32;fontColor=#2E7D32;fontSize=10;" edge="1" source="c2" target="b5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- OwnershipCostCard → cost-calculator -->
+        <mxCell id="e12" value="calculate monthly" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E7D32;fontColor=#2E7D32;fontSize=10;" edge="1" source="c3" target="b4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- PremiumGate → Feature Flags -->
+        <mxCell id="e13" value="canAccess()" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4527A0;fontColor=#4527A0;fontSize=10;" edge="1" source="c4" target="b6" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /settings/preferences → swipeStore reset (dashed) -->
+        <mxCell id="e14" value="reset feed" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4527A0;fontColor=#4527A0;fontSize=10;dashed=1;" edge="1" source="p10" target="s2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /favorites → /compare via ?ids= (dashed) -->
+        <mxCell id="e15" value="?ids= params" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;fontColor=#1565C0;fontSize=10;dashed=1;" edge="1" source="p6" target="p7" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /login → NextAuth -->
+        <mxCell id="e16" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#1565C0;" edge="1" source="p2" target="a1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- /api/auth → NextAuth lib -->
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#E65100;" edge="1" source="a1" target="b1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Providers wraps pages -->
+        <mxCell id="e18" value="wraps entire app" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2E7D32;fontColor=#2E7D32;fontSize=10;dashed=1;" edge="1" source="c7" target="p4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--               LEGEND                    -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="legend_bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="782" width="280" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_title" value="Legend" style="text;html=1;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="784" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" value="⭐ = Core / critical path" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="802" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" value="-- -- Dashed = navigation / signal" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="820" width="260" height="18" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
