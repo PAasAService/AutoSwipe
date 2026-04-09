@@ -26,7 +26,8 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().max(20).optional(),
   password: z.string().min(8).regex(/[A-Z]/, 'חייב להכיל אות גדולה').regex(/[0-9]/, 'חייב להכיל מספר'),
-  roles: z.array(z.enum(['BUYER', 'SELLER'])).min(1),
+  // roles is accepted for backward compat but always defaults to both BUYER+SELLER
+  roles: z.array(z.enum(['BUYER', 'SELLER'])).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, email, phone, password, roles } = schema.parse(body)
+    const { name, email, phone, password } = schema.parse(body)
+    // Every user is always both buyer and seller — no role selection needed
+    const roles = ['BUYER', 'SELLER']
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
 import { useFavorites, useToggleFavorite } from '../../src/hooks/useFavorites'
@@ -31,7 +31,6 @@ function formatHand(hand: number): string {
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
-  const qc = useQueryClient()
   const { data: me } = useCurrentUser()
   const { data: favorites } = useFavorites()
   const toggleFavorite = useToggleFavorite()
@@ -46,10 +45,22 @@ export default function ListingDetailScreen() {
   const startThread = useMutation({
     mutationFn: () =>
       api.post<{ data: { threadId: string } }>('/api/messages', { listingId: id }),
-    onSuccess: (res) => {
-      router.push(`/(tabs)/messages/${(res as any).data?.threadId ?? (res as any).threadId}`)
+    onSuccess: () => {
+      // Stay on the listing — do not navigate away.
+      // Navigating to a tab route from a non-tab screen (e.g. /listing/[id]) via
+      // router.push breaks the navigation stack so the back button jumps to the
+      // wrong screen. Showing a toast here is sufficient; the buyer can check
+      // their pending conversations in the Messages tab at any time.
+      Toast.show({
+        type: 'success',
+        text1: 'בקשת הקשר נשלחה! 📩',
+        text2: 'המוכר יצור איתך קשר ברגע שיאשר את השיחה',
+        visibilityTime: 4000,
+      })
     },
-    onError: () => {
+    onError: (err: any) => {
+      // If a thread already exists the server returns 200, not an error.
+      // Only surface a toast for genuine failures.
       Toast.show({ type: 'error', text1: 'שגיאה בפתיחת שיחה' })
     },
   })
@@ -330,6 +341,16 @@ export default function ListingDetailScreen() {
             }}>
               <Text style={{ color: '#888888', fontSize: 15 }}>🔒 המוכר יצור קשר</Text>
             </View>
+          ) : startThread.isSuccess ? (
+            /* After sending: show confirmation state, button is inert */
+            <View style={{
+              flex: 1, height: 48, borderRadius: 12,
+              backgroundColor: 'rgba(76,175,80,0.15)',
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 1, borderColor: 'rgba(76,175,80,0.3)',
+            }}>
+              <Text style={{ color: '#4CAF50', fontWeight: '700', fontSize: 15 }}>📩 הבקשה נשלחה</Text>
+            </View>
           ) : (
             <TouchableOpacity
               onPress={() => startThread.mutate()}
@@ -338,6 +359,7 @@ export default function ListingDetailScreen() {
                 flex: 1, height: 48, borderRadius: 12,
                 backgroundColor: '#D4A843',
                 justifyContent: 'center', alignItems: 'center',
+                opacity: startThread.isPending ? 0.7 : 1,
               }}
             >
               {startThread.isPending

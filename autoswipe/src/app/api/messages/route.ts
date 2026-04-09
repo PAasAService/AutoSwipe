@@ -5,10 +5,11 @@ import { z } from 'zod'
 import { updateLearnedSignals } from '@/lib/recommendation/engine'
 import { ListingStatus, MessagingMode } from '@/lib/domain-enums'
 import {
-  canBuyerSendMessage,
   effectiveListingMessagingMode,
-  shouldCountBuyerMessage,
 } from '@/lib/messaging-policy'
+
+// The automatic interest message sent on behalf of the buyer when they tap "Contact Seller"
+const BUYER_INTEREST_MESSAGE = 'מעוניין ברכב שלך'
 
 async function isBlocked(aId: string, bId: string): Promise<boolean> {
   const row = await prisma.userBlock.findFirst({
@@ -35,7 +36,23 @@ export async function GET(req: NextRequest) {
     where: {
       OR: [{ buyerId: userId }, { sellerId: userId }],
     },
-    include: {
+    select: {
+      id: true,
+      buyerId: true,
+      sellerId: true,
+      listingId: true,
+      lastMessage: true,
+      lastMessageAt: true,
+      buyerUnread: true,
+      sellerUnread: true,
+      buyerMessageCount: true,
+      sellerStartedChat: true,
+      openBuyerCapCleared: true,
+      isSuperLike: true,
+      isActive: true,
+      initiatedBy: true,
+      createdAt: true,
+      updatedAt: true,
       buyer: { select: { id: true, name: true, avatarUrl: true } },
       seller: { select: { id: true, name: true, avatarUrl: true } },
       listing: {
@@ -67,6 +84,8 @@ export async function POST(req: NextRequest) {
 
   const schema = z.object({
     listingId: z.string(),
+    // text is only accepted from the seller-initiation (BUMBLE) path — buyer flow no longer
+    // accepts free text; a predefined interest message is always used instead
     text: z.string().min(1).max(1000).optional(),
     buyerId: z.string().optional(),
   })
@@ -96,7 +115,7 @@ export async function POST(req: NextRequest) {
 
   const effectiveMode = effectiveListingMessagingMode(listing, listing.seller)
 
-  // ── Seller initiates (e.g. BUMBLE): body includes buyerId ─────────────────
+  // ── Seller initiates (BUMBLE): body includes buyerId ──────────────────────
   if (buyerId) {
     if (listing.sellerId !== userId) {
       return NextResponse.json({ error: 'אסור' }, { status: 403 })
@@ -182,7 +201,8 @@ export async function POST(req: NextRequest) {
 
   const sellerId = listing.sellerId
 
-  let thread = await prisma.messageThread.findUnique({
+  // Check whether a thread already exists for this buyer/seller/listing triple
+  const existingThread = await prisma.messageThread.findUnique({
     where: {
       buyerId_sellerId_listingId: {
         buyerId: buyerIdResolved,
@@ -190,46 +210,40 @@ export async function POST(req: NextRequest) {
         listingId,
       },
     },
+    select: { id: true },
   })
 
-  if (!thread) {
-    thread = await prisma.messageThread.create({
-      data: { buyerId: buyerIdResolved, sellerId, listingId },
-    })
-    await updateLearnedSignals(buyerIdResolved, listingId, 'MESSAGE_SELLER')
+  if (existingThread) {
+    // Thread already exists (e.g. buyer already swiped or contacted before).
+    // Return the existing threadId without creating a duplicate message.
+    return NextResponse.json({ data: { threadId: existingThread.id } }, { status: 200 })
   }
 
-  let message = null
-  if (text) {
-    const gate = canBuyerSendMessage({
-      thread,
-      isBuyer: true,
-      effectiveMode,
-    })
-    if (!gate.ok) {
-      return NextResponse.json({ error: gate.reason }, { status: 403 })
-    }
+  // ── New thread: create pending with predefined interest message ────────────
+  const thread = await prisma.messageThread.create({
+    data: {
+      buyerId: buyerIdResolved,
+      sellerId,
+      listingId,
+      // New threads always start as pending — seller must activate via PATCH
+      isActive: false,
+      initiatedBy: 'BUYER',
+      lastMessage: BUYER_INTEREST_MESSAGE,
+      lastMessageAt: new Date(),
+      // Notify seller of the new interest
+      sellerUnread: 1,
+    },
+  })
 
-    message = await prisma.message.create({
-      data: { threadId: thread.id, senderId: buyerIdResolved, text },
-      include: {
-        sender: { select: { id: true, name: true, avatarUrl: true } },
-      },
-    })
+  await prisma.message.create({
+    data: {
+      threadId: thread.id,
+      senderId: buyerIdResolved,
+      text: BUYER_INTEREST_MESSAGE,
+    },
+  })
 
-    const incBuyer =
-      shouldCountBuyerMessage(effectiveMode) && effectiveMode === MessagingMode.OPEN
+  await updateLearnedSignals(buyerIdResolved, listingId, 'MESSAGE_SELLER')
 
-    await prisma.messageThread.update({
-      where: { id: thread.id },
-      data: {
-        lastMessage: text,
-        lastMessageAt: new Date(),
-        sellerUnread: { increment: 1 },
-        ...(incBuyer ? { buyerMessageCount: { increment: 1 } } : {}),
-      },
-    })
-  }
-
-  return NextResponse.json({ data: { threadId: thread.id, message } }, { status: 201 })
+  return NextResponse.json({ data: { threadId: thread.id } }, { status: 201 })
 }

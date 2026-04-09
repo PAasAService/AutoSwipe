@@ -79,3 +79,21 @@ export function useSendMessage(threadId: string) {
     },
   })
 }
+
+/**
+ * Seller activates a pending thread → moves it from "Pending Chats" to "Active Chats".
+ * Calls PATCH /api/messages/[threadId]
+ */
+export function useStartConversation() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (threadId: string) =>
+      api.patch<{ data: { ok: boolean } }>(`/api/messages/${threadId}`, {}),
+
+    onSuccess: () => {
+      // Refresh the thread list so the thread moves from pending → active
+      qc.invalidateQueries({ queryKey: queryKeys.threads() })
+    },
+  })
+}

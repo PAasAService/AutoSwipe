@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, TextInput,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -12,19 +12,16 @@ import { useSwipeStore } from '../../../src/store/swipe'
 import { queryKeys } from '../../../src/lib/query-keys'
 import {
   VEHICLE_TYPES, FUEL_TYPES,
-  VEHICLE_TYPE_LABELS, FUEL_TYPE_LABELS, CAR_BRANDS,
+  VEHICLE_TYPE_LABELS, FUEL_TYPE_LABELS,
 } from '../../../src/constants/cars'
-import { ISRAELI_CITIES } from '../../../src/constants/cities'
 import { FuelType, VehicleType, BuyerPreferences } from '../../../src/types'
+import {
+  BrandModelPicker,
+  CityPickerField,
+  YearDropdown,
+  BudgetSlider,
+} from '../../../src/components/ui/pickers'
 
-const BUDGET_OPTIONS = [
-  { label: 'עד ₪50K', max: 50000 },
-  { label: 'עד ₪80K', max: 80000 },
-  { label: 'עד ₪120K', max: 120000 },
-  { label: 'עד ₪150K', max: 150000 },
-  { label: 'עד ₪200K', max: 200000 },
-  { label: 'מעל ₪200K', max: 9999999 },
-]
 const RADIUS_OPTIONS = [
   { label: '20 ק"מ', value: 20 },
   { label: '50 ק"מ', value: 50 },
@@ -48,7 +45,8 @@ export default function PreferencesScreen() {
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(50)
   const [brands, setBrands] = useState<string[]>([])
-  const [citySearch, setCitySearch] = useState('')
+  const [models, setModels] = useState<string[]>([])
+  const [yearMin, setYearMin] = useState<number | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
@@ -63,9 +61,13 @@ export default function PreferencesScreen() {
 
   const mutation = useMutation({
     mutationFn: () => api.put('/api/users/preferences', {
-      vehicleTypes, fuelPreferences: fuelTypes,
-      budgetMax, location, searchRadius: radius,
+      vehicleTypes,
+      fuelPreferences: fuelTypes,
+      budgetMax,
+      location,
+      searchRadius: radius,
       preferredBrands: brands,
+      yearFrom: yearMin ?? undefined,
     }),
     onSuccess: () => {
       qc.removeQueries({ queryKey: queryKeys.recommendations() })
@@ -82,7 +84,7 @@ export default function PreferencesScreen() {
     setIsDirty(true)
   }
 
-  const filteredCities = ISRAELI_CITIES.filter((c) => c.includes(citySearch))
+  function mark() { setIsDirty(true) }
 
   if (isLoading) {
     return (
@@ -106,11 +108,14 @@ export default function PreferencesScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+      >
 
-        {/* Vehicle Types */}
-        <SectionHeader label="🚗 סוג רכב" />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+        {/* ── סוג רכב ── */}
+        <SectionHeader label="🚙 סוג רכב" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
           {VEHICLE_TYPES.map((vt) => (
             <Chip
               key={vt}
@@ -121,9 +126,9 @@ export default function PreferencesScreen() {
           ))}
         </View>
 
-        {/* Fuel */}
+        {/* ── סוג דלק ── */}
         <SectionHeader label="⛽ סוג דלק" />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
           {FUEL_TYPES.map((ft) => (
             <Chip
               key={ft}
@@ -134,68 +139,63 @@ export default function PreferencesScreen() {
           ))}
         </View>
 
-        {/* Budget */}
-        <SectionHeader label="💰 תקציב" />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-          {BUDGET_OPTIONS.map((opt) => (
-            <Chip
-              key={opt.max}
-              label={opt.label}
-              selected={budgetMax === opt.max}
-              onPress={() => { setBudgetMax(opt.max); setIsDirty(true) }}
-            />
-          ))}
+        {/* ── תקציב מקסימלי ── */}
+        <SectionHeader label="💰 תקציב מקסימלי" />
+        <View style={{ marginBottom: 28 }}>
+          <BudgetSlider
+            value={budgetMax}
+            min={20000}
+            max={600000}
+            step={10000}
+            onChange={(v) => { setBudgetMax(v); mark() }}
+            noMaxLabel="ללא הגבלה"
+          />
         </View>
 
-        {/* Location */}
+        {/* ── שנה מינימלית ── */}
+        <SectionHeader label="📅 שנה מינימלית" />
+        <View style={{ marginBottom: 28 }}>
+          <YearDropdown
+            value={yearMin}
+            onChange={(y) => { setYearMin(y); mark() }}
+            placeholder="כל השנים"
+          />
+        </View>
+
+        {/* ── מיקום ── */}
         <SectionHeader label="📍 מיקום" />
-        <TextInput
-          value={citySearch}
-          onChangeText={setCitySearch}
-          placeholder="חפש עיר..."
-          placeholderTextColor="#555"
-          textAlign="right"
-          style={{
-            backgroundColor: '#1A1A1A', borderRadius: 10, padding: 12,
-            color: '#F5F5F5', marginBottom: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-          }}
-        />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-          {(citySearch ? filteredCities.slice(0, 20) : ISRAELI_CITIES.slice(0, 16)).map((city) => (
-            <Chip
-              key={city}
-              label={city}
-              selected={location === city}
-              onPress={() => { setLocation(city); setCitySearch(''); setIsDirty(true) }}
-            />
-          ))}
+        <View style={{ marginBottom: 16 }}>
+          <CityPickerField
+            value={location}
+            onChange={(city) => { setLocation(city); mark() }}
+          />
         </View>
 
-        {/* Radius */}
+        {/* ── רדיוס חיפוש ── */}
         <SectionHeader label="📡 רדיוס חיפוש" />
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 28 }}>
           {RADIUS_OPTIONS.map((r) => (
             <Chip
               key={r.value}
               label={r.label}
               selected={radius === r.value}
-              onPress={() => { setRadius(r.value); setIsDirty(true) }}
+              onPress={() => { setRadius(r.value); mark() }}
             />
           ))}
         </View>
 
-        {/* Brands */}
-        <SectionHeader label="⭐ מותגים מועדפים" />
-        <Text style={{ color: '#888', fontSize: 13, textAlign: 'right', marginBottom: 8 }}>לא חובה</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-          {CAR_BRANDS.map((brand) => (
-            <Chip
-              key={brand}
-              label={brand}
-              selected={brands.includes(brand)}
-              onPress={() => toggle(brands, brand, setBrands)}
-            />
-          ))}
+        {/* ── יצרן ודגם מועדף ── */}
+        <SectionHeader label="⭐ יצרן ודגם מועדף" />
+        <Text style={{ color: '#666', fontSize: 13, textAlign: 'right', marginBottom: 12 }}>
+          לא חובה — בחירה תשפיע על הפיד שלך
+        </Text>
+        <View style={{ marginBottom: 28 }}>
+          <BrandModelPicker
+            selectedBrands={brands}
+            selectedModels={models}
+            onBrandsChange={(b) => { setBrands(b); mark() }}
+            onModelsChange={(m) => { setModels(m); mark() }}
+          />
         </View>
 
       </ScrollView>
@@ -203,15 +203,20 @@ export default function PreferencesScreen() {
       {/* Save Bar */}
       <View style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        backgroundColor: '#0F0F0F', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
-        padding: 16, paddingBottom: 28,
+        backgroundColor: '#0F0F0F',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.08)',
+        padding: 16,
+        paddingBottom: 28,
       }}>
         <TouchableOpacity
           onPress={() => mutation.mutate()}
           disabled={!isDirty || mutation.isPending}
           style={{
             backgroundColor: isDirty ? '#D4A843' : '#333',
-            borderRadius: 14, padding: 16, alignItems: 'center',
+            borderRadius: 14,
+            padding: 16,
+            alignItems: 'center',
           }}
         >
           {mutation.isPending
@@ -227,7 +232,17 @@ export default function PreferencesScreen() {
 }
 
 function SectionHeader({ label }: { label: string }) {
-  return <Text style={{ color: '#F5F5F5', fontSize: 16, fontWeight: '700', textAlign: 'right', marginBottom: 10 }}>{label}</Text>
+  return (
+    <Text style={{
+      color: '#F5F5F5',
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'right',
+      marginBottom: 12,
+    }}>
+      {label}
+    </Text>
+  )
 }
 
 function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
@@ -235,8 +250,10 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
     <TouchableOpacity
       onPress={onPress}
       style={{
-        paddingHorizontal: 14, paddingVertical: 8,
-        borderRadius: 20, borderWidth: 1.5,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1.5,
         borderColor: selected ? '#D4A843' : 'rgba(255,255,255,0.15)',
         backgroundColor: selected ? 'rgba(212,168,67,0.15)' : 'transparent',
       }}

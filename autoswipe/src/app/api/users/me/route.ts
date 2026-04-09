@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
         emailNotifications: true,
         emailFrequency: true,
         pushNotifications: true,
+        superLikesRemaining: true,
         createdAt: true,
         buyerPreferences: true,
         _count: {

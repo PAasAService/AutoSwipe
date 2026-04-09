@@ -33,6 +33,7 @@ model User {
   pushNotifications  Boolean   @default(true)
   /// JSON: { messages, matches, priceDrops, listingStatus } booleans
   notificationPrefs  String    @default("{}")
+  superLikesRemaining Int      @default(10)
   lastActiveAt       DateTime  @default(now())
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -233,6 +234,12 @@ model MessageThread {
   /// OPEN: after seller replies, buyer is no longer limited to 3 messages
   openBuyerCapCleared Boolean   @default(false)
   waitlistNotified   Boolean    @default(false)
+  /// Super like flag: buyer sent a super like when creating this thread
+  isSuperLike        Boolean    @default(false)
+  /// false = pending (seller hasn't started chat yet); true = active full chat
+  isActive           Boolean    @default(true)
+  /// Who initiated: 'BUYER' | 'SELLER'
+  initiatedBy        String?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 
