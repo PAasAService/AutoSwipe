@@ -11,11 +11,13 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { useThread, useSendMessage } from '../../../src/hooks/useThread'
+import { useThread, useSendMessage, useStartConversation } from '../../../src/hooks/useThread'
 import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 import { Message } from '../../../src/types'
 import { formatRelativeTime } from '../../../src/lib/utils/format'
+import { queryKeys } from '../../../src/lib/query-keys'
 
 // Default max buyer messages before seller must reply
 const BUYER_MESSAGE_LIMIT = 3
@@ -23,9 +25,11 @@ const BUYER_MESSAGE_LIMIT = 3
 export default function ChatScreen() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>()
   const router = useRouter()
+  const qc = useQueryClient()
   const { data, isLoading } = useThread(threadId)
   const { data: me } = useCurrentUser()
   const sendMessage = useSendMessage(threadId)
+  const startConversation = useStartConversation()
   const [text, setText] = useState('')
   const listRef = useRef<FlatList>(null)
 
@@ -35,6 +39,15 @@ export default function ChatScreen() {
     setText('')
     sendMessage.mutate(msg)
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
+  }
+
+  function handleStartConversation() {
+    startConversation.mutate(threadId, {
+      onSuccess: () => {
+        // Refresh both the thread detail and the thread list
+        qc.invalidateQueries({ queryKey: queryKeys.thread(threadId) })
+      },
+    })
   }
 
   if (isLoading || !data) {
@@ -47,7 +60,11 @@ export default function ChatScreen() {
 
   const { thread, messages } = data
   const isBuyer = thread.buyerId === me?.id
+  const isSeller = thread.sellerId === me?.id
   const otherUser = isBuyer ? thread.seller : thread.buyer
+
+  // ── Pending state: thread not yet activated by seller ──────────────────────
+  const isPending = thread.isActive === false
 
   // Buyer message limit: disable input when buyer has hit the limit and seller hasn't replied yet
   const effectiveLimit = thread.buyerMessageLimit ?? BUYER_MESSAGE_LIMIT
@@ -56,6 +73,8 @@ export default function ChatScreen() {
     (thread.buyerMessageCount ?? 0) >= effectiveLimit
 
   const inputDisabled = buyerLimitReached || sendMessage.isPending
+
+  const isSuperLike = thread.isSuperLike === true
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
@@ -110,64 +129,127 @@ export default function ChatScreen() {
           )}
         />
 
-        {/* Buyer limit notice */}
-        {buyerLimitReached && (
-          <View style={{
-            paddingHorizontal: 16, paddingVertical: 12,
-            backgroundColor: 'rgba(255,152,0,0.08)',
-            borderTopWidth: 1, borderTopColor: 'rgba(255,152,0,0.2)',
-          }}>
-            <Text style={{ color: '#FF9800', fontSize: 13, textAlign: 'right' }}>
-              שלחת {thread.buyerMessageCount} הודעות. ממתין לתגובת המוכר לפני שתוכל לשלוח עוד. 🔒
-            </Text>
-          </View>
-        )}
-
-        {/* Input bar */}
-        <View style={{
-          flexDirection: 'row',
-          padding: 12,
-          gap: 8,
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.08)',
-          backgroundColor: '#1A1A1A',
-          alignItems: 'flex-end',
-        }}>
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!text.trim() || inputDisabled}
-            style={{
-              backgroundColor: '#D4A843',
-              borderRadius: 10,
-              width: 44,
-              height: 44,
-              justifyContent: 'center',
+        {/* ── Pending state footer — replaces the input bar completely ── */}
+        {isPending ? (
+          isSeller ? (
+            /* Seller view: prompt to activate the thread */
+            <View style={{
+              margin: 16,
+              padding: 16,
+              borderRadius: 14,
+              backgroundColor: isSuperLike ? 'rgba(212,168,67,0.10)' : 'rgba(255,255,255,0.05)',
+              borderWidth: 1,
+              borderColor: isSuperLike ? 'rgba(212,168,67,0.5)' : 'rgba(255,255,255,0.1)',
               alignItems: 'center',
-              opacity: (!text.trim() || inputDisabled) ? 0.4 : 1,
-            }}
-          >
-            <Text style={{ fontSize: 18 }}>↑</Text>
-          </TouchableOpacity>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={buyerLimitReached ? 'ממתין לתגובת המוכר...' : 'הקלד הודעה...'}
-            placeholderTextColor="#888888"
-            multiline
-            textAlign="right"
-            editable={!buyerLimitReached}
-            style={{
-              flex: 1,
-              backgroundColor: buyerLimitReached ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
-              borderRadius: 10,
+              gap: 12,
+            }}>
+              <Text style={{ fontSize: 22 }}>{isSuperLike ? '⭐' : '💬'}</Text>
+              <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>
+                {isSuperLike ? 'קיבלת סופר לייק!' : 'קונה מעוניין ברכב שלך!'}
+              </Text>
+              <Text style={{ color: '#AAAAAA', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                {otherUser.name} {isSuperLike ? 'ממש מעוניין ברכב שלך.' : 'מעוניין ברכב שלך.'}{'\n'}
+                לחץ על "התחל שיחה" כדי לפתוח את הצ'אט.
+              </Text>
+              <TouchableOpacity
+                onPress={handleStartConversation}
+                disabled={startConversation.isPending}
+                style={{
+                  backgroundColor: isSuperLike ? '#D4A843' : '#2A7AFF',
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 28,
+                  opacity: startConversation.isPending ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 15 }}>
+                  {startConversation.isPending ? 'טוען...' : 'התחל שיחה ←'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Buyer view: informational — waiting for seller */
+            <View style={{
+              margin: 16,
+              padding: 16,
+              borderRadius: 14,
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.1)',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              <Text style={{ fontSize: 22 }}>📩</Text>
+              <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>
+                בקשת הקשר נשלחה!
+              </Text>
+              <Text style={{ color: '#AAAAAA', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                המוכר יצור איתך קשר ברגע שיאשר את השיחה. ⏳
+              </Text>
+            </View>
+          )
+        ) : (
+          /* ── Active thread: normal input bar ── */
+          <>
+            {/* Buyer limit notice */}
+            {buyerLimitReached && (
+              <View style={{
+                paddingHorizontal: 16, paddingVertical: 12,
+                backgroundColor: 'rgba(255,152,0,0.08)',
+                borderTopWidth: 1, borderTopColor: 'rgba(255,152,0,0.2)',
+              }}>
+                <Text style={{ color: '#FF9800', fontSize: 13, textAlign: 'right' }}>
+                  שלחת {thread.buyerMessageCount} הודעות. ממתין לתגובת המוכר לפני שתוכל לשלוח עוד. 🔒
+                </Text>
+              </View>
+            )}
+
+            <View style={{
+              flexDirection: 'row',
               padding: 12,
-              color: '#F5F5F5',
-              fontSize: 15,
-              maxHeight: 100,
-              opacity: buyerLimitReached ? 0.5 : 1,
-            }}
-          />
-        </View>
+              gap: 8,
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(255,255,255,0.08)',
+              backgroundColor: '#1A1A1A',
+              alignItems: 'flex-end',
+            }}>
+              <TouchableOpacity
+                onPress={handleSend}
+                disabled={!text.trim() || inputDisabled}
+                style={{
+                  backgroundColor: '#D4A843',
+                  borderRadius: 10,
+                  width: 44,
+                  height: 44,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  opacity: (!text.trim() || inputDisabled) ? 0.4 : 1,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>↑</Text>
+              </TouchableOpacity>
+              <TextInput
+                value={text}
+                onChangeText={setText}
+                placeholder={buyerLimitReached ? 'ממתין לתגובת המוכר...' : 'הקלד הודעה...'}
+                placeholderTextColor="#888888"
+                multiline
+                textAlign="right"
+                editable={!buyerLimitReached}
+                style={{
+                  flex: 1,
+                  backgroundColor: buyerLimitReached ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
+                  borderRadius: 10,
+                  padding: 12,
+                  color: '#F5F5F5',
+                  fontSize: 15,
+                  maxHeight: 100,
+                  opacity: buyerLimitReached ? 0.5 : 1,
+                }}
+              />
+            </View>
+          </>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   )

@@ -74,6 +74,37 @@ export async function GET(req: NextRequest, { params }: { params: { threadId: st
   return NextResponse.json({ data: thread })
 }
 
+// PATCH — seller starts conversation (moves thread from pending → active)
+export async function PATCH(req: NextRequest, { params }: { params: { threadId: string } }) {
+  const user = await getAuthUser(req)
+  if (!user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const thread = await prisma.messageThread.findUnique({
+    where: { id: params.threadId },
+    select: { id: true, sellerId: true, buyerId: true, isActive: true },
+  })
+  if (!thread) return NextResponse.json({ error: 'שיחה לא נמצאה' }, { status: 404 })
+
+  // Only the seller can start the conversation
+  if (thread.sellerId !== user.id) {
+    return NextResponse.json({ error: 'רק המוכר יכול להתחיל את השיחה' }, { status: 403 })
+  }
+
+  if (thread.isActive) {
+    return NextResponse.json({ data: { ok: true, alreadyActive: true } })
+  }
+
+  const updated = await prisma.messageThread.update({
+    where: { id: params.threadId },
+    data: { isActive: true, sellerStartedChat: true },
+    select: { id: true, isActive: true },
+  })
+
+  return NextResponse.json({ data: updated })
+}
+
 // POST — send a message in an existing thread
 export async function POST(req: NextRequest, { params }: { params: { threadId: string } }) {
   const user = await getAuthUser(req)
@@ -93,6 +124,17 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
   if (!thread) return NextResponse.json({ error: 'שיחה לא נמצאה' }, { status: 404 })
   if (thread.buyerId !== userId && thread.sellerId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // Guard: both sides are blocked from sending messages until the seller activates the thread
+  if (!thread.isActive) {
+    return NextResponse.json(
+      {
+        error: 'השיחה עדיין ממתינה לאישור המוכר — לא ניתן לשלוח הודעות עדיין',
+        code: 'THREAD_NOT_ACTIVE',
+      },
+      { status: 403 }
+    )
   }
 
   if (await isBlocked(thread.buyerId, thread.sellerId)) {

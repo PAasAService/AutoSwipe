@@ -13,6 +13,7 @@ import Toast from 'react-native-toast-message'
 import { useQueryClient } from '@tanstack/react-query'
 import { FeedListing, SwipeDirection } from '../../types'
 import { useSwipeStore } from '../../store/swipe'
+import { useCurrentUser } from '../../hooks/useCurrentUser'
 import { api } from '../../lib/api'
 import { queryKeys } from '../../lib/query-keys'
 import { colors } from '../../lib/theme'
@@ -34,6 +35,10 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
   const swipeLockRef = useRef(false)
   const qc = useQueryClient()
   const router = useRouter()
+  const { data: me } = useCurrentUser()
+
+  const superLikesRemaining = me?.superLikesRemaining ?? 0
+  const superDisabled = superLikesRemaining <= 0
 
   const position = useRef(new Animated.ValueXY()).current
   const rotate = position.x.interpolate({
@@ -65,6 +70,19 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
   const triggerSwipe = useCallback(
     async (direction: SwipeDirection) => {
       if (swipeLockRef.current || !currentCard) return
+
+      // Guard: no super likes left
+      if (direction === 'SUPER' && superDisabled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+        Toast.show({
+          type: 'error',
+          text1: 'אין יותר סופר לייקים 😔',
+          text2: 'השתמשת בכל 10 הסופר לייקים שלך',
+          visibilityTime: 3000,
+        })
+        return
+      }
+
       swipeLockRef.current = true
 
       if (direction === 'RIGHT') {
@@ -75,14 +93,13 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       }
 
-      // Single write: POST /api/swipes creates Favorite for RIGHT/SUPER. Show success only after
-      // the server OKs so an error toast does not replace an optimistic "saved" message.
       void (async () => {
         try {
-          await api.post('/api/swipes', {
-            listingId: currentCard.id,
-            direction,
-          })
+          const result = await api.post<{ data: unknown; superLikesRemaining?: number }>(
+            '/api/swipes',
+            { listingId: currentCard.id, direction }
+          )
+
           if (direction === 'RIGHT') {
             Toast.show({
               type: 'success',
@@ -91,19 +108,34 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
             })
             qc.invalidateQueries({ queryKey: queryKeys.favorites() })
           } else if (direction === 'SUPER') {
+            const remaining = result.superLikesRemaining
             Toast.show({
               type: 'success',
               text1: 'סופר לייק! ⭐',
-              visibilityTime: 2200,
+              text2: remaining !== undefined ? `נותרו ${remaining} סופר לייקים` : undefined,
+              visibilityTime: 2500,
             })
             qc.invalidateQueries({ queryKey: queryKeys.favorites() })
+            // Refresh user so superLikesRemaining counter updates everywhere
+            qc.invalidateQueries({ queryKey: queryKeys.me() })
           }
-        } catch (e) {
-          Toast.show({
-            type: 'error',
-            text1: e instanceof Error ? e.message : 'שגיאת שרת',
-            visibilityTime: 4000,
-          })
+        } catch (e: any) {
+          const isSuperLimitError = e?.message?.includes('NO_SUPER_LIKES_REMAINING') ||
+            e?.message?.includes('אין לך יותר סופר לייקים')
+          if (isSuperLimitError) {
+            Toast.show({
+              type: 'error',
+              text1: 'אין יותר סופר לייקים 😔',
+              visibilityTime: 3000,
+            })
+            qc.invalidateQueries({ queryKey: queryKeys.me() })
+          } else {
+            Toast.show({
+              type: 'error',
+              text1: e instanceof Error ? e.message : 'שגיאת שרת',
+              visibilityTime: 4000,
+            })
+          }
         }
       })()
 
@@ -136,7 +168,7 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
         }
       })
     },
-    [currentCard, currentIndex, cards.length, swipe, onNearEnd, qc, position]
+    [currentCard, currentIndex, cards.length, swipe, onNearEnd, qc, position, superDisabled]
   )
 
   // KEY FIX: keep a ref to triggerSwipe so PanResponder always calls the latest version
@@ -148,7 +180,6 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
   // PanResponder created ONCE — uses ref so it always calls current triggerSwipe
   const panResponder = useRef(
     PanResponder.create({
-      // Use onMoveShouldSetPanResponder so short taps are NOT captured (allows card tap → detail)
       onMoveShouldSetPanResponder: (_, gesture) =>
         Math.abs(gesture.dx) > 8 || Math.abs(gesture.dy) > 8,
       onPanResponderMove: (_, gesture) => {
@@ -327,9 +358,48 @@ export default function SwipeDeck({ cards, onNearEnd, onReset }: Props) {
           paddingBottom: 8,
         }}
       >
-        <ActionButton emoji="✕" color={colors.swipeNope} onPress={() => triggerSwipe('LEFT')} size={58} accessibilityLabel="דלג" />
-        <ActionButton emoji="⭐" color={colors.swipeSuper} onPress={() => triggerSwipe('SUPER')} size={48} accessibilityLabel="סופר לייק" />
-        <ActionButton emoji="❤️" color={colors.swipeLike} onPress={() => triggerSwipe('RIGHT')} size={58} accessibilityLabel="שמור מועדפים" />
+        <ActionButton
+          emoji="✕"
+          color={colors.swipeNope}
+          onPress={() => triggerSwipe('LEFT')}
+          size={58}
+          accessibilityLabel="דלג"
+        />
+
+        {/* Super like button with count badge */}
+        <View style={{ alignItems: 'center' }}>
+          <ActionButton
+            emoji={superDisabled ? '🚫' : '⭐'}
+            color={superDisabled ? '#555' : colors.swipeSuper}
+            onPress={() => triggerSwipe('SUPER')}
+            size={48}
+            disabled={superDisabled}
+            accessibilityLabel="סופר לייק"
+          />
+          <View style={{
+            marginTop: 4,
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+            borderRadius: 10,
+            backgroundColor: superDisabled ? 'rgba(85,85,85,0.2)' : 'rgba(33,150,243,0.15)',
+          }}>
+            <Text style={{
+              color: superDisabled ? '#555' : colors.swipeSuper,
+              fontSize: 11,
+              fontWeight: '700',
+            }}>
+              {superDisabled ? 'אזל' : `${superLikesRemaining} ⭐`}
+            </Text>
+          </View>
+        </View>
+
+        <ActionButton
+          emoji="❤️"
+          color={colors.swipeLike}
+          onPress={() => triggerSwipe('RIGHT')}
+          size={58}
+          accessibilityLabel="שמור מועדפים"
+        />
       </View>
     </View>
   )
@@ -340,17 +410,20 @@ function ActionButton({
   color,
   onPress,
   size,
+  disabled,
   accessibilityLabel,
 }: {
   emoji: string
   color: string
   onPress: () => void
   size: number
+  disabled?: boolean
   accessibilityLabel?: string
 }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      disabled={disabled}
       accessibilityLabel={accessibilityLabel}
       style={{
         width: size,
@@ -363,9 +436,10 @@ function ActionButton({
         alignItems: 'center',
         shadowColor: color,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: disabled ? 0 : 0.3,
         shadowRadius: 8,
-        elevation: 4,
+        elevation: disabled ? 0 : 4,
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       <Text style={{ fontSize: size * 0.4 }}>{emoji}</Text>

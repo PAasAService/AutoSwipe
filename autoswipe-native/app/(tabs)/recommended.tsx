@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useRouter } from 'expo-router'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
 import Skeleton from '../../src/components/ui/Skeleton'
 import {
@@ -339,10 +340,20 @@ function DocumentsSection() {
 
 function GuideCard({ guide }: { guide: GuideItem }) {
   const isNew = isNewGuide(guide.publishedAt)
+  const router = useRouter()
+
+  function handlePress() {
+    if (guide.isComingSoon) return
+    if (guide.content) {
+      router.push(`/guide/${guide.id}`)
+    } else {
+      openUrl(guide.url)
+    }
+  }
 
   return (
     <TouchableOpacity
-      onPress={() => !guide.isComingSoon && openUrl(guide.url)}
+      onPress={handlePress}
       activeOpacity={guide.isComingSoon ? 1 : 0.78}
       style={{
         padding: 14,
