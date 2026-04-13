@@ -48,23 +48,25 @@ export async function POST(req: NextRequest) {
     const { listingId, direction } = parsed.data
     const userId = user.id
 
-    // Fetch full user record to check super like count
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, superLikesRemaining: true },
-    })
-    if (!dbUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    // Enforce super like limit before doing anything
-    if (direction === 'SUPER' && dbUser.superLikesRemaining <= 0) {
-      return NextResponse.json(
-        {
-          error: 'אין לך יותר סופר לייקים',
-          code: 'NO_SUPER_LIKES_REMAINING',
-          superLikesRemaining: 0,
-        },
-        { status: 403 }
-      )
+    // For SUPER swipes: atomically check-and-decrement superLikesRemaining in a single
+    // DB operation. The WHERE condition (superLikesRemaining > 0) prevents a race condition
+    // where two concurrent requests both pass a read-then-check, causing a double-decrement
+    // into negative values. If count = 0, the quota is exhausted (or the user doesn't exist).
+    if (direction === 'SUPER') {
+      const decremented = await prisma.user.updateMany({
+        where: { id: userId, superLikesRemaining: { gt: 0 } },
+        data: { superLikesRemaining: { decrement: 1 } },
+      })
+      if (decremented.count === 0) {
+        return NextResponse.json(
+          {
+            error: 'אין לך יותר סופר לייקים',
+            code: 'NO_SUPER_LIKES_REMAINING',
+            superLikesRemaining: 0,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     const listing = await prisma.carListing.findUnique({
@@ -90,7 +92,7 @@ export async function POST(req: NextRequest) {
       update: { direction },
     })
 
-    let superLikesRemaining = dbUser.superLikesRemaining
+    let superLikesRemaining = 0
 
     if (direction === 'RIGHT' || direction === 'SUPER') {
       await updateLearnedSignals(userId, listingId, 'SWIPE_RIGHT')
@@ -153,13 +155,12 @@ export async function POST(req: NextRequest) {
       }
 
       if (direction === 'SUPER') {
-        // ── Decrement super like quota ────────────────────────────────────────
-        const updated = await prisma.user.update({
+        // ── Fetch fresh quota count for the response (decrement already done above) ──
+        const fresh = await prisma.user.findUnique({
           where: { id: userId },
-          data: { superLikesRemaining: { decrement: 1 } },
           select: { superLikesRemaining: true },
         })
-        superLikesRemaining = updated.superLikesRemaining
+        superLikesRemaining = fresh?.superLikesRemaining ?? 0
 
         // ── Create pending thread + auto-message (super likes only) ──────────
         // A super like is an explicit high-intent action — it creates a pending
@@ -183,27 +184,44 @@ export async function POST(req: NextRequest) {
           })
 
           if (!existingThread) {
-            // Fresh thread — create with isSuperLike flag and auto-message
-            const thread = await prisma.messageThread.create({
-              data: {
-                buyerId: userId,
-                sellerId: listing.sellerId,
-                listingId,
-                isSuperLike: true,
-                isActive: false,
-                initiatedBy: 'BUYER',
-                lastMessage: SUPER_LIKE_MESSAGE,
-                lastMessageAt: new Date(),
-                sellerUnread: 1,
-              },
-            })
-            await prisma.message.create({
-              data: {
-                threadId: thread.id,
-                senderId: userId,
-                text: SUPER_LIKE_MESSAGE,
-              },
-            })
+            // Fresh thread — create with isSuperLike flag and auto-message.
+            // Wrapped in try-catch: a concurrent SUPER swipe may create the same thread
+            // (P2002 unique constraint) between our findUnique check and this create.
+            try {
+              const thread = await prisma.messageThread.create({
+                data: {
+                  buyerId: userId,
+                  sellerId: listing.sellerId,
+                  listingId,
+                  isSuperLike: true,
+                  isActive: false,
+                  initiatedBy: 'BUYER',
+                  lastMessage: SUPER_LIKE_MESSAGE,
+                  lastMessageAt: new Date(),
+                  sellerUnread: 1,
+                },
+              })
+              await prisma.message.create({
+                data: {
+                  threadId: thread.id,
+                  senderId: userId,
+                  text: SUPER_LIKE_MESSAGE,
+                },
+              })
+            } catch (createErr: any) {
+              // P2002: concurrent request created the thread — upgrade to isSuperLike
+              if (createErr?.code !== 'P2002') throw createErr
+              await prisma.messageThread.update({
+                where: {
+                  buyerId_sellerId_listingId: {
+                    buyerId: userId,
+                    sellerId: listing.sellerId,
+                    listingId,
+                  },
+                },
+                data: { isSuperLike: true },
+              }).catch(() => {})
+            }
           } else if (!existingThread.isSuperLike) {
             // Thread already exists (e.g. buyer previously tapped "Send message").
             // Upgrade it to super like so it gets priority treatment in the inbox.

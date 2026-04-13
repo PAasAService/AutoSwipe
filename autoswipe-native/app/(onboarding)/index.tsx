@@ -20,7 +20,6 @@ const ONBOARDING_DRAFT_KEY = 'autoswipe_onboarding_draft'
 type Step =
   | 'prefs'
   | 'notifications'
-  | 'messaging-mode'
   | 'both-done'
 
 const RADIUS_OPTIONS = [
@@ -48,14 +47,13 @@ const EMAIL_FREQ = [
 function getNextStep(current: Step): Step {
   switch (current) {
     case 'prefs':         return 'notifications'
-    case 'notifications': return 'messaging-mode'
-    case 'messaging-mode': return 'both-done'
+    case 'notifications': return 'both-done'
     default:              return 'both-done'
   }
 }
 
 // All users are always both buyer and seller — fixed progress path
-const PROGRESS_STEPS: Step[] = ['prefs', 'notifications', 'messaging-mode', 'both-done']
+const PROGRESS_STEPS: Step[] = ['prefs', 'notifications', 'both-done']
 
 export default function OnboardingScreen() {
   const router = useRouter()
@@ -459,70 +457,6 @@ export default function OnboardingScreen() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // MESSAGING MODE STEP (seller / both)
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'messaging-mode') {
-    const MODES = [
-      {
-        value: 'OPEN' as const,
-        icon: '💬',
-        title: 'פתוח לפניות',
-        desc: 'קונים שמועדף עליהם הרכב שלך יוכלו לשלוח לך הודעה ישירות. אתה תחליט אם לענות.',
-        extra: 'מגביל ל-3 הודעות ראשוניות לכל קונה, כדי שלא תוצף.',
-      },
-      {
-        value: 'BUMBLE' as const,
-        icon: '🔒',
-        title: 'אתה קובע עם מי לדבר',
-        desc: 'קונים יסמנו לייק על הרכב שלך, אבל לא יוכלו לשלוח הודעות. רק אתה רואה מי עשה לייק — ואתה בוחר עם מי להתחיל שיחה.',
-        extra: 'מתאים אם אתה רוצה שקט ורוצה לסנן לפני שמדברים.',
-      },
-    ]
-    const prevStep: Step = 'notifications'
-
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-        <ProgressDots steps={progressSteps} current={step} />
-        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
-          <Text style={s.h1}>איך תרצה לקבל פניות מקונים?</Text>
-          <Text style={[s.subtitle, { marginBottom: 28 }]}>
-            תוכל לשנות את זה בכל עת מהגדרות המודעה.
-          </Text>
-
-          <View style={{ gap: 14 }}>
-            {MODES.map((mode) => {
-              const sel = messagingMode === mode.value
-              return (
-                <TouchableOpacity
-                  key={mode.value}
-                  onPress={() => setMessagingMode(mode.value)}
-                  style={[s.modeCard, sel && s.modeCardSel]}
-                  activeOpacity={0.75}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <View style={[s.radio, sel && s.radioSel]}>
-                      {sel && <View style={s.radioDot} />}
-                    </View>
-                    <Text style={[s.modeTitle, sel && { color: '#D4A843' }]}>
-                      {mode.icon} {mode.title}
-                    </Text>
-                  </View>
-                  <Text style={s.modeDesc}>{mode.desc}</Text>
-                  <View style={s.modeExtra}>
-                    <Text style={s.modeExtraText}>💡 {mode.extra}</Text>
-                  </View>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        </ScrollView>
-
-        <NavBar onBack={() => setStep(prevStep)} onNext={advance} onSkip={advance} />
-      </SafeAreaView>
-    )
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
   // DONE (everyone is both buyer and seller)
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'both-done') {
@@ -681,18 +615,6 @@ const s = StyleSheet.create({
   },
   notifTitle: { color: '#F5F5F5', fontWeight: '700', fontSize: 15, textAlign: 'right', marginBottom: 6 },
   notifDesc:  { color: '#888', fontSize: 13, textAlign: 'right', lineHeight: 20 },
-  modeCard: {
-    backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20,
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.08)',
-  },
-  modeCardSel:   { borderColor: '#D4A843', backgroundColor: 'rgba(212,168,67,0.06)' },
-  modeTitle:     { color: '#F5F5F5', fontWeight: '700', fontSize: 17, textAlign: 'right' },
-  modeDesc:      { color: '#888', fontSize: 14, textAlign: 'right', lineHeight: 22, marginBottom: 10 },
-  modeExtra:     { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 10 },
-  modeExtraText: { color: '#666', fontSize: 12, textAlign: 'right', lineHeight: 18 },
-  radio:         { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
-  radioSel:      { borderColor: '#D4A843' },
-  radioDot:      { width: 10, height: 10, borderRadius: 5, backgroundColor: '#D4A843' },
   doneIcon: {
     width: 88, height: 88, borderRadius: 44,
     backgroundColor: 'rgba(212,168,67,0.12)', borderWidth: 2, borderColor: '#D4A843',

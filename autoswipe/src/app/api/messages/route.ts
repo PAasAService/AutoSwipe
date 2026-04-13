@@ -90,7 +90,17 @@ export async function POST(req: NextRequest) {
     buyerId: z.string().optional(),
   })
 
-  const { listingId, text, buyerId } = schema.parse(await req.json())
+  let rawBody: unknown
+  try {
+    rawBody = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+  }
+  const schemaResult = schema.safeParse(rawBody)
+  if (!schemaResult.success) {
+    return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+  }
+  const { listingId, text, buyerId } = schemaResult.data
   const userId = user.id
 
   const listing = await prisma.carListing.findUnique({
@@ -220,30 +230,45 @@ export async function POST(req: NextRequest) {
   }
 
   // ── New thread: create pending with predefined interest message ────────────
-  const thread = await prisma.messageThread.create({
-    data: {
-      buyerId: buyerIdResolved,
-      sellerId,
-      listingId,
-      // New threads always start as pending — seller must activate via PATCH
-      isActive: false,
-      initiatedBy: 'BUYER',
-      lastMessage: BUYER_INTEREST_MESSAGE,
-      lastMessageAt: new Date(),
-      // Notify seller of the new interest
-      sellerUnread: 1,
-    },
-  })
-
-  await prisma.message.create({
-    data: {
-      threadId: thread.id,
-      senderId: buyerIdResolved,
-      text: BUYER_INTEREST_MESSAGE,
-    },
-  })
-
-  await updateLearnedSignals(buyerIdResolved, listingId, 'MESSAGE_SELLER')
+  // Wrapped in try-catch: a concurrent POST (e.g. rapid double-tap) could create
+  // the same thread (P2002 unique constraint) between our findUnique check and this
+  // create. On P2002 we return the existing thread idempotently.
+  let thread: { id: string }
+  try {
+    thread = await prisma.messageThread.create({
+      data: {
+        buyerId: buyerIdResolved,
+        sellerId,
+        listingId,
+        // New threads always start as pending — seller must activate via PATCH
+        isActive: false,
+        initiatedBy: 'BUYER',
+        lastMessage: BUYER_INTEREST_MESSAGE,
+        lastMessageAt: new Date(),
+        // Notify seller of the new interest
+        sellerUnread: 1,
+      },
+    })
+    await prisma.message.create({
+      data: {
+        threadId: thread.id,
+        senderId: buyerIdResolved,
+        text: BUYER_INTEREST_MESSAGE,
+      },
+    })
+    await updateLearnedSignals(buyerIdResolved, listingId, 'MESSAGE_SELLER')
+  } catch (createErr: any) {
+    // P2002: concurrent request created the thread — return existing thread id
+    if (createErr?.code !== 'P2002') throw createErr
+    const existing = await prisma.messageThread.findUnique({
+      where: {
+        buyerId_sellerId_listingId: { buyerId: buyerIdResolved, sellerId, listingId },
+      },
+      select: { id: true },
+    })
+    if (!existing) throw createErr
+    return NextResponse.json({ data: { threadId: existing.id } }, { status: 200 })
+  }
 
   return NextResponse.json({ data: { threadId: thread.id } }, { status: 201 })
 }

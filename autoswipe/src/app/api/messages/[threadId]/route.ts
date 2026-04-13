@@ -112,7 +112,17 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { text } = z.object({ text: z.string().min(1).max(1000) }).parse(await req.json())
+  let msgBody: unknown
+  try {
+    msgBody = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+  }
+  const msgParsed = z.object({ text: z.string().min(1).max(1000) }).safeParse(msgBody)
+  if (!msgParsed.success) {
+    return NextResponse.json({ error: 'בקשה לא תקינה' }, { status: 400 })
+  }
+  const { text } = msgParsed.data
   const userId = user.id
 
   const thread = await prisma.messageThread.findUnique({

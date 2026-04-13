@@ -27,9 +27,9 @@ export default function ChatScreen() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>()
   const router = useRouter()
   const qc = useQueryClient()
-  const { data, isLoading } = useThread(threadId)
+  const { data, isLoading, isError } = useThread(threadId)
   const { data: me } = useCurrentUser()
-  const sendMessage = useSendMessage(threadId)
+  const sendMessage = useSendMessage(threadId, me?.id)
   const startConversation = useStartConversation()
   const [text, setText] = useState('')
   const listRef = useRef<FlatList>(null)
@@ -51,11 +51,31 @@ export default function ChatScreen() {
     })
   }
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#D4A843" />
       </View>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>💬</Text>
+        <Text style={{ color: '#F5F5F5', fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
+          לא ניתן לטעון את השיחה
+        </Text>
+        <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+          ייתכן שהשיחה הוסרה או שאין לך גישה אליה.
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ marginTop: 24, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: '#1A1A1A', borderRadius: 12 }}
+        >
+          <Text style={{ color: '#D4A843', fontWeight: '700', fontSize: 15 }}>חזור ←</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     )
   }
 
@@ -67,10 +87,12 @@ export default function ChatScreen() {
   // ── Pending state: thread not yet activated by seller ──────────────────────
   const isPending = thread.isActive === false
 
-  // Buyer message limit: disable input when buyer has hit the limit and seller hasn't replied yet
+  // Buyer message limit: disable input when buyer has hit the OPEN-mode cap and
+  // the seller hasn't replied yet. openBuyerCapCleared is set to true by the server
+  // the first time the seller sends a message, which permanently lifts the cap.
   const effectiveLimit = thread.buyerMessageLimit ?? BUYER_MESSAGE_LIMIT
   const buyerLimitReached = isBuyer &&
-    !thread.sellerHasReplied &&
+    !thread.openBuyerCapCleared &&
     (thread.buyerMessageCount ?? 0) >= effectiveLimit
 
   const inputDisabled = buyerLimitReached || sendMessage.isPending

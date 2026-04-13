@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { updateLearnedSignals } from '@/lib/recommendation/engine'
 
 export async function GET(req: NextRequest) {
   const user = await getAuthUser(req)
@@ -88,9 +89,19 @@ export async function DELETE(req: NextRequest) {
   const listingId = searchParams.get('listingId')
   if (!listingId) return NextResponse.json({ error: 'Missing listingId' }, { status: 400 })
 
-  await prisma.favorite.delete({
-    where: { userId_listingId: { userId: user.id, listingId } },
-  })
+  // Delete the favorite. If it was already gone (P2025 — double-tap or concurrent
+  // request) return 200 idempotently WITHOUT recording a duplicate skip signal.
+  try {
+    await prisma.favorite.delete({
+      where: { userId_listingId: { userId: user.id, listingId } },
+    })
+  } catch (err: unknown) {
+    if ((err as { code?: string })?.code === 'P2025') {
+      // Favorite was already removed — nothing left to do.
+      return NextResponse.json({ message: 'הוסר מהמועדפים' })
+    }
+    throw err
+  }
 
   // updateMany with likeCount > 0 guard — prevents going negative if count
   // is already 0 due to data inconsistency (seed data, concurrent deletes, etc.)
@@ -98,6 +109,13 @@ export async function DELETE(req: NextRequest) {
     where: { id: listingId, likeCount: { gt: 0 } },
     data: { likeCount: { decrement: 1 } },
   })
+
+  // Treat removal from favorites as a skip: update the recommendation engine's
+  // learned signals exactly as a LEFT swipe would (-0.5 on brand/model/vehicleType/
+  // fuelType dimensions). This ensures similar cars rank lower in future feeds.
+  // Note: we do NOT upsert a SwipeAction record — the user's original RIGHT swipe
+  // history must not be overwritten.
+  await updateLearnedSignals(user.id, listingId, 'SWIPE_LEFT')
 
   return NextResponse.json({ message: 'הוסר מהמועדפים' })
 }

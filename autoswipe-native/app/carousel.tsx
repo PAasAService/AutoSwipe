@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, PanResponder,
+  View, Text, TouchableOpacity, StyleSheet, PanResponder, Animated,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -120,23 +120,82 @@ export default function CarouselScreen() {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
 
+  // Ref mirrors state so the PanResponder closure always reads the live value
+  // (PanResponder is created once in useRef and therefore can't close over state).
+  const currentIndexRef = useRef(0)
+
+  // Guards against overlapping transitions from rapid taps or swipes mid-animation.
+  const isAnimating = useRef(false)
+
+  // Animated values for slide transition — created once, never replaced
+  const slideX = useRef(new Animated.Value(0)).current
+  const slideOpacity = useRef(new Animated.Value(1)).current
+
   async function markSeenAndNavigate(path: string) {
     await AsyncStorage.setItem(CAROUSEL_SEEN_KEY, 'true')
     router.replace(path as any)
   }
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onMoveShouldSetPanResponder: (_, g) =>
-      Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
-    onPanResponderRelease: (_, g) => {
-      if (g.dx < -50 && currentIndex < SLIDES.length - 1) {
-        setCurrentIndex((i) => i + 1)
-      } else if (g.dx > 50 && currentIndex > 0) {
-        setCurrentIndex((i) => i - 1)
-      }
-    },
-  })
+  // goTo is called both from buttons (where currentIndex state is fresh) and
+  // from the panResponder (where we use currentIndexRef instead of state).
+  // All dependencies (slideX, slideOpacity, currentIndexRef, setCurrentIndex) are
+  // stable refs/values, so the version captured by panResponder is always correct.
+  function goTo(nextIndex: number, direction: 1 | -1) {
+    if (nextIndex < 0 || nextIndex >= SLIDES.length) return
+    // Prevent overlapping transitions from rapid taps or swipes mid-animation.
+    if (isAnimating.current) return
+    isAnimating.current = true
+    // Phase 1: slide + fade out
+    Animated.parallel([
+      Animated.timing(slideOpacity, { toValue: 0, duration: 110, useNativeDriver: true }),
+      Animated.timing(slideX, { toValue: -direction * 28, duration: 110, useNativeDriver: true }),
+    ]).start(() => {
+      // Swap content while off-screen
+      currentIndexRef.current = nextIndex
+      setCurrentIndex(nextIndex)
+      // Position the new slide on the incoming side, then spring in
+      slideX.setValue(direction * 28)
+      Animated.parallel([
+        Animated.timing(slideOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(slideX, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start(() => {
+        // Release guard only after the full transition completes
+        isAnimating.current = false
+      })
+    })
+  }
+
+  // PanResponder lives in a ref so it is created once and never causes re-renders.
+  // It uses currentIndexRef (not state) to avoid stale closure bugs.
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      // Live drag feedback — rubber-band effect at edges
+      onPanResponderMove: (_, g) => {
+        const ci = currentIndexRef.current
+        const isEdge = (ci === 0 && g.dx > 0) || (ci === SLIDES.length - 1 && g.dx < 0)
+        slideX.setValue(g.dx * (isEdge ? 0.1 : 0.28))
+      },
+      onPanResponderRelease: (_, g) => {
+        const ci = currentIndexRef.current
+        if (g.dx < -50 && ci < SLIDES.length - 1) {
+          goTo(ci + 1, 1)
+        } else if (g.dx > 50 && ci > 0) {
+          goTo(ci - 1, -1)
+        } else {
+          // Didn't meet threshold — spring back to resting position
+          Animated.spring(slideX, {
+            toValue: 0,
+            tension: 80,
+            friction: 10,
+            useNativeDriver: true,
+          }).start()
+        }
+      },
+    })
+  ).current
 
   const slide = SLIDES[currentIndex]
   const isLast = currentIndex === SLIDES.length - 1
@@ -153,21 +212,25 @@ export default function CarouselScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Slide content — swipeable area */}
-      <View
-        style={styles.slideArea}
+      {/* Slide content — swipeable + animated */}
+      <Animated.View
+        style={[styles.slideArea, { transform: [{ translateX: slideX }], opacity: slideOpacity }]}
         {...panResponder.panHandlers}
       >
         <Illustration id={slide.id} />
-
         <Text style={styles.title}>{slide.title}</Text>
         <Text style={styles.subtitle}>{slide.subtitle}</Text>
-      </View>
+      </Animated.View>
 
       {/* Navigation dots */}
       <View style={styles.dotsRow}>
         {SLIDES.map((_, i) => (
-          <TouchableOpacity key={i} onPress={() => setCurrentIndex(i)}>
+          <TouchableOpacity
+            key={i}
+            onPress={() => {
+              if (i !== currentIndex) goTo(i, i > currentIndex ? 1 : -1)
+            }}
+          >
             <View
               style={[
                 styles.dot,
@@ -205,7 +268,7 @@ export default function CarouselScreen() {
           </>
         ) : (
           <TouchableOpacity
-            onPress={() => setCurrentIndex((i) => i + 1)}
+            onPress={() => goTo(currentIndex + 1, 1)}
             style={styles.primaryBtn}
           >
             <Text style={styles.primaryBtnText}>הבא ←</Text>
