@@ -96,7 +96,8 @@ export interface MessageThread {
   buyerMessageCount: number
   /** Server cap (e.g. OPEN marketplace); omit to use client default. */
   buyerMessageLimit?: number
-  sellerHasReplied: boolean
+  /** True once the seller has replied in OPEN mode — lifts the 3-message buyer cap */
+  openBuyerCapCleared: boolean
   /** Super like: buyer sent a super like when this thread was created */
   isSuperLike: boolean
   /** false = pending (seller hasn't activated), true = full active chat */

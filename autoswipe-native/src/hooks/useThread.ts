@@ -37,7 +37,7 @@ export function useThreads() {
   })
 }
 
-export function useSendMessage(threadId: string) {
+export function useSendMessage(threadId: string, currentUserId?: string) {
   const qc = useQueryClient()
   const queryKey = queryKeys.thread(threadId)
 
@@ -50,11 +50,13 @@ export function useSendMessage(threadId: string) {
       const snapshot = qc.getQueryData<ThreadResponse>(queryKey)
 
       if (snapshot) {
+        // Use the real user id so MessageBubble's isMe check (senderId === me?.id)
+        // renders the optimistic message on the correct side immediately.
         const optimisticMessage: Message = {
           id: `optimistic-${Date.now()}`,
           threadId,
-          senderId: 'me',
-          sender: { id: 'me', name: '' },
+          senderId: currentUserId ?? 'optimistic',
+          sender: { id: currentUserId ?? 'optimistic', name: '' },
           text,
           isRead: false,
           createdAt: new Date().toISOString(),
