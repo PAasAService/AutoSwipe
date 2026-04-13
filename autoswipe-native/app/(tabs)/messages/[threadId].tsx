@@ -16,6 +16,7 @@ import { useThread, useSendMessage } from '../../../src/hooks/useThread'
 import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 import { Message } from '../../../src/types'
 import { formatRelativeTime } from '../../../src/lib/utils/format'
+import { listingImageUri } from '../../../src/lib/listing-image-uri'
 
 // Default max buyer messages before seller must reply
 const BUYER_MESSAGE_LIMIT = 3
@@ -86,7 +87,7 @@ export default function ChatScreen() {
           </View>
           {thread.listing.images?.[0] && (
             <Image
-              source={{ uri: thread.listing.images[0].url }}
+              source={{ uri: listingImageUri(thread.listing.images[0].path) }}
               style={{ width: 44, height: 44, borderRadius: 8 }}
               contentFit="cover"
             />

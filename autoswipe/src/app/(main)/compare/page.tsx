@@ -234,8 +234,8 @@ function CompareContent() {
                       className={clsx('p-3 text-center', i < n - 1 && 'border-r border-outline-variant/10')}
                     >
                       <div className="relative w-full h-[72px] rounded-xl overflow-hidden bg-surface-container-high mb-2">
-                        {l.images[0]?.url ? (
-                          <Image src={l.images[0].url} alt="" fill className="object-cover" />
+                        {l.images[0]?.path ? (
+                          <Image src={l.images[0].path} alt="" fill className="object-cover" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
                             <Car className="w-6 h-6 text-on-surface-variant/30" />

@@ -30,6 +30,7 @@ export default function RootLayout() {
             <Stack.Screen name="listing/[id]" options={{ presentation: 'modal' }} />
             <Stack.Screen name="listing/create/index" options={{ presentation: 'modal' }} />
             <Stack.Screen name="compare/index" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="notifications/index" options={{ presentation: 'modal' }} />
           </Stack>
           <Toast />
         </QueryClientProvider>

@@ -42,7 +42,7 @@ function googleAudiences(): string[] {
       if (t) set.add(t)
     }
   }
-  return [...set]
+  return Array.from(set)
 }
 
 /** Apple JWT `aud` — bundle ID / Services ID from env, plus Expo Go in development. */
@@ -53,7 +53,7 @@ function appleAudiences(): string[] {
   if (process.env.NODE_ENV === 'development') {
     set.add('host.exp.Exponent')
   }
-  return [...set]
+  return Array.from(set)
 }
 
 /**

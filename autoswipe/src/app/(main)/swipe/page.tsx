@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { SwipeDeck } from '@/components/swipe/SwipeDeck'
-import { Settings2, Bell } from 'lucide-react'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { Settings2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function SwipePage() {
@@ -13,14 +14,16 @@ export default async function SwipePage() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-80px)]" dir="rtl">
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 flex-shrink-0">
-        <Link href="/settings" aria-label="הגדרות">
-          <Settings2 className="w-6 h-6 text-text-muted hover:text-text-secondary transition-colors" />
-        </Link>
+      {/* Header — bell physical top-left; settings physical top-right */}
+      <header className="relative flex items-center justify-center px-5 py-4 flex-shrink-0 min-h-[56px]">
+        <NotificationBell className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
         <span className="text-accent font-black text-xl tracking-tight">AutoSwipe</span>
-        <Link href="/settings/notifications" aria-label="התראות">
-          <Bell className="w-6 h-6 text-text-muted hover:text-text-secondary transition-colors" />
+        <Link
+          href="/settings"
+          aria-label="הגדרות"
+          className="absolute right-5 top-1/2 -translate-y-1/2"
+        >
+          <Settings2 className="w-6 h-6 text-text-muted hover:text-text-secondary transition-colors" />
         </Link>
       </header>
 

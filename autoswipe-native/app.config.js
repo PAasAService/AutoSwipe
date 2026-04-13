@@ -55,6 +55,12 @@ module.exports = ({ config }) => {
     extra: {
       ...(config.extra || {}),
       devLanHost: firstLanIPv4(),
+      eas: {
+        ...(config.extra?.eas || {}),
+        projectId:
+          process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim() ||
+          config.extra?.eas?.projectId,
+      },
     },
   }
 }

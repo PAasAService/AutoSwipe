@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router'
 import { View, Text } from 'react-native'
 import { useThreads } from '../../src/hooks/useThread'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
+import { useRegisterExpoPush } from '../../src/hooks/useRegisterExpoPush'
 
 function TabIcon({
   emoji, label, focused, badge,
@@ -44,6 +45,8 @@ function TabIcon({
 export default function TabsLayout() {
   const { data: me } = useCurrentUser()
   const { data: threads } = useThreads()
+
+  useRegisterExpoPush(me?.id)
 
   const totalUnread = threads?.reduce((sum, t) => {
     const isBuyer = t.buyerId === me?.id

@@ -7,7 +7,7 @@ export type DealTag = 'GREAT_DEAL' | 'BELOW_MARKET' | 'FAIR_PRICE' | 'ABOVE_MARK
 
 export interface ListingImage {
   id: string
-  url: string
+  path: string
   order: number
   isPrimary: boolean
 }

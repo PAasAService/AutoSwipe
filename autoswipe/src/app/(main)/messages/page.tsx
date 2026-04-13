@@ -84,7 +84,7 @@ export default async function MessagesPage({
               const isBuyer = thread.buyerId === userId
               const otherUser = isBuyer ? thread.seller : thread.buyer
               const unread = isBuyer ? thread.buyerUnread : thread.sellerUnread
-              const listingThumb = thread.listing.images[0]?.url
+              const listingThumb = thread.listing.images[0]?.path
               const isActive = unread > 0
 
               return (

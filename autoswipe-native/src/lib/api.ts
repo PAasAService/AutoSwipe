@@ -80,6 +80,45 @@ async function request<T>(
   return res.json()
 }
 
+/** Multipart upload — do not set Content-Type (boundary). */
+export async function uploadListingImageFromUri(uri: string): Promise<{ path: string }> {
+  const token = await getToken()
+  const formData = new FormData()
+  formData.append(
+    'file',
+    { uri, name: 'photo.jpg', type: 'image/jpeg' } as unknown as Blob,
+  )
+
+  const res = await fetch(`${getApiBaseUrl()}/api/upload/listing-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+
+  if (res.status === 401) {
+    await clearToken()
+    throw new Error('401')
+  }
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || `HTTP ${res.status}`)
+  }
+
+  return res.json() as Promise<{ path: string }>
+}
+
+export async function deletePendingListingImage(publicPath: string): Promise<void> {
+  const token = await getToken()
+  await fetch(
+    `${getApiBaseUrl()}/api/upload?path=${encodeURIComponent(publicPath)}`,
+    {
+      method: 'DELETE',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  )
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>

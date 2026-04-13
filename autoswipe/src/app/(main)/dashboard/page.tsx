@@ -114,9 +114,9 @@ export default async function DashboardPage() {
               {/* Featured large card */}
               {featuredListing && (
                 <div className="relative group overflow-hidden rounded-2xl aspect-[16/10] bg-surface-container-lowest">
-                  {featuredListing.images[0]?.url ? (
+                  {featuredListing.images[0]?.path ? (
                     <Image
-                      src={featuredListing.images[0].url}
+                      src={featuredListing.images[0].path}
                       alt={`${featuredListing.brand} ${featuredListing.model} ${featuredListing.year}`}
                       fill
                       className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -160,7 +160,7 @@ export default async function DashboardPage() {
 
               {/* Remaining listings as rows */}
               {listings.slice(1).map((listing) => {
-                const thumb = listing.images[0]?.url
+                const thumb = listing.images[0]?.path
                 const st = statusLabel[listing.status] ?? { label: listing.status, color: 'text-on-surface-variant' }
                 return (
                   <div key={listing.id} className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/10">

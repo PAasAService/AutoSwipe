@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { api } from '../../../src/lib/api'
+import { api, uploadListingImageFromUri, deletePendingListingImage } from '../../../src/lib/api'
 import {
   CAR_BRANDS, FUEL_TYPES, VEHICLE_TYPES,
   FUEL_TYPE_LABELS, VEHICLE_TYPE_LABELS, TRANSMISSION_LABELS,
@@ -37,7 +37,7 @@ interface FormData {
   messagingMode: 'OPEN' | 'SELLER_FIRST'
 }
 
-interface UploadedImage { uri: string; cloudUrl?: string; publicId?: string; uploading: boolean; error?: string }
+interface UploadedImage { uri: string; path?: string; uploading: boolean; error?: string }
 
 export default function CreateListingScreen() {
   const router = useRouter()
@@ -161,21 +161,9 @@ export default function CreateListingScreen() {
     for (let i = 0; i < slots.length; i++) {
       const idx = images.length + i
       try {
-        const sign = await api.post<any>('/api/upload/sign', { folder: 'listings' })
-        const formData = new FormData()
-        formData.append('file', { uri: slots[i].uri, name: 'photo.jpg', type: 'image/jpeg' } as any)
-        formData.append('signature', sign.signature)
-        formData.append('timestamp', sign.timestamp.toString())
-        formData.append('api_key', sign.apiKey)
-        formData.append('folder', 'listings')
-
-        const upload = await fetch(
-          `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`,
-          { method: 'POST', body: formData }
-        )
-        const data = await upload.json()
+        const { path } = await uploadListingImageFromUri(slots[i].uri)
         setImages((prev) => prev.map((img, j) =>
-          j === idx ? { ...img, cloudUrl: data.secure_url, publicId: data.public_id, uploading: false } : img
+          j === idx ? { ...img, path, uploading: false } : img
         ))
       } catch {
         setImages((prev) => prev.map((img, j) =>
@@ -186,7 +174,13 @@ export default function CreateListingScreen() {
   }
 
   function removeImage(idx: number) {
-    setImages((prev) => prev.filter((_, i) => i !== idx))
+    setImages((prev) => {
+      const img = prev[idx]
+      if (img?.path) {
+        deletePendingListingImage(img.path).catch(() => {})
+      }
+      return prev.filter((_, i) => i !== idx)
+    })
   }
 
   // ── Publish ───────────────────────────────────────────────────────────────
@@ -224,7 +218,7 @@ export default function CreateListingScreen() {
         messagingMode: form.messagingMode,
         plateNumber: form.plateNumber || undefined,
         isGovVerified: form.isGovVerified,
-        images: images.filter((i) => i.cloudUrl).map((i) => ({ url: i.cloudUrl!, publicId: i.publicId })),
+        images: images.filter((i) => i.path).map((i) => ({ path: i.path! })),
       })
       qc.invalidateQueries({ queryKey: ['my-listings'] })
       await AsyncStorage.removeItem(DRAFT_KEY)

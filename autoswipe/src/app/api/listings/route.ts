@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { calculateCostBreakdown } from '@/lib/utils/cost-calculator'
 import { classifyDeal, computePriceVsMarket, estimateMarketPrice } from '@/lib/utils/price-intelligence'
 import { syncListingToMarketData } from '@/lib/valuation/market-collector'
+import { isPendingPathForUser, movePendingToListing } from '@/lib/listing-image-storage'
 
 const createSchema = z.object({
   brand: z.string().min(1),
@@ -25,7 +26,7 @@ const createSchema = z.object({
   maintenanceEstimate: z.number().int().min(0).max(100_000),
   depreciationRate: z.number().min(0).max(1),
   description:   z.string().max(2000).optional(),
-  images:        z.array(z.object({ url: z.string().url(), publicId: z.string().max(200).optional() })).min(1).max(6),
+  images:        z.array(z.object({ path: z.string().min(8) })).min(1).max(6),
   plateNumber:   z.string().max(20).optional(),
   isGovVerified: z.boolean().optional().default(false),
 })
@@ -39,6 +40,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const data = createSchema.parse(body)
+
+    for (const img of data.images) {
+      if (!isPendingPathForUser(img.path, user.id)) {
+        return NextResponse.json(
+          { error: 'נתיב תמונה לא תקין — העלה מחדש' },
+          { status: 400 },
+        )
+      }
+    }
 
     // Compute market data
     const marketAvg = estimateMarketPrice(data.brand, data.model, data.year)
@@ -77,25 +87,42 @@ export async function POST(req: NextRequest) {
         dealTag: dealTag ?? undefined,
         monthlyCost: costBreakdown.monthly,
         publishedAt: new Date(),
-        images: {
-          create: data.images.map((img, i) => ({
-            url:       img.url,
-            publicId:  img.publicId ?? null,
-            order:     i,
-            isPrimary: i === 0,
-          })),
-        },
       },
+    })
+
+    try {
+      const rows = await Promise.all(
+        data.images.map((img, i) => movePendingToListing(img.path, listing.id, i)),
+      )
+      await prisma.listingImage.createMany({
+        data: rows.map((publicPath, i) => ({
+          listingId: listing.id,
+          path: publicPath,
+          order: i,
+          isPrimary: i === 0,
+        })),
+      })
+    } catch (e) {
+      await prisma.carListing.delete({ where: { id: listing.id } }).catch(() => {})
+      console.error('[listings POST] image move', e)
+      return NextResponse.json(
+        { error: 'שמירת תמונות נכשלה — נסה שוב' },
+        { status: 500 },
+      )
+    }
+
+    const listingWithImages = await prisma.carListing.findUniqueOrThrow({
+      where: { id: listing.id },
       include: {
-        images: true,
+        images: { orderBy: { order: 'asc' } },
         seller: { select: { id: true, name: true, avatarUrl: true } },
       },
     })
 
     // Non-blocking: sync new listing to market data table for valuation engine
-    syncListingToMarketData(listing.id).catch(() => {})
+    syncListingToMarketData(listingWithImages.id).catch(() => {})
 
-    return NextResponse.json({ data: listing }, { status: 201 })
+    return NextResponse.json({ data: listingWithImages }, { status: 201 })
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.errors[0].message }, { status: 400 })

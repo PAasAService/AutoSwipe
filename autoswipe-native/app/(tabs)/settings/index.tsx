@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { clearToken } from '../../../src/lib/api'
+import { unregisterPushDevice } from '../../../src/lib/unregister-push-device'
 import { queryClient } from '../../../src/lib/query-client'
 import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 
@@ -16,6 +17,7 @@ export default function SettingsScreen() {
         text: 'התנתק',
         style: 'destructive',
         onPress: async () => {
+          await unregisterPushDevice()
           await clearToken()
           queryClient.clear()
           router.replace('/(auth)/login')

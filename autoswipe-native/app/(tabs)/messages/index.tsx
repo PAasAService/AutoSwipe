@@ -7,6 +7,7 @@ import { formatRelativeTime } from '../../../src/lib/utils/format'
 import { MessageThread } from '../../../src/types'
 import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 import Skeleton from '../../../src/components/ui/Skeleton'
+import { listingImageUri } from '../../../src/lib/listing-image-uri'
 
 export default function MessagesScreen() {
   const { data: threads, isLoading } = useThreads()
@@ -124,7 +125,7 @@ function ThreadItem({
       <TouchableOpacity onPress={onPressListing} activeOpacity={0.75}>
         {carImage ? (
           <Image
-            source={{ uri: carImage.url }}
+            source={{ uri: listingImageUri(carImage.path) }}
             style={{ width: 56, height: 56, borderRadius: 10 }}
             contentFit="cover"
           />

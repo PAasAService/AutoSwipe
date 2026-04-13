@@ -80,7 +80,7 @@ export function SwipeCard({ listing, isTop, onSwipe, onTap, zIndex = 0 }: SwipeC
     }
   }
 
-  const primaryImage = images[imageIndex]?.url ?? images[0]?.url
+  const primaryImage = images[imageIndex]?.path ?? images[0]?.path
 
   return (
     <motion.div

@@ -2,8 +2,24 @@
  * AutoSwipe Database Seed (SQLite)
  */
 
+import path from 'path'
+import { existsSync } from 'fs'
+import fs from 'fs/promises'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+
+/** Download remote demo images once into public/uploads/seed for local paths. */
+async function cacheSeedImage(remoteUrl: string, seedKey: string): Promise<string> {
+  const rel = `/uploads/seed/${seedKey}`
+  const diskPath = path.join(process.cwd(), 'public', rel.replace(/^\//, ''))
+  await fs.mkdir(path.dirname(diskPath), { recursive: true })
+  if (!existsSync(diskPath)) {
+    const res = await fetch(remoteUrl)
+    if (!res.ok) throw new Error(`Seed fetch failed: ${remoteUrl}`)
+    await fs.writeFile(diskPath, Buffer.from(await res.arrayBuffer()))
+  }
+  return rel
+}
 
 const prisma = new PrismaClient()
 
@@ -308,12 +324,16 @@ async function main() {
   for (let i = 0; i < SEED_LISTINGS.length; i++) {
     const data = SEED_LISTINGS[i]
     const seller = sellers[i % sellers.length]
-    const images = CAR_IMAGES[data.brand] ?? CAR_IMAGES.default
-
     const existing = await prisma.carListing.findFirst({
       where: { sellerId: seller.id, brand: data.brand, model: data.model, year: data.year },
     })
     if (existing) continue
+
+    const remoteImages = CAR_IMAGES[data.brand] ?? CAR_IMAGES.default
+    const localPaths: string[] = []
+    for (let j = 0; j < remoteImages.length; j++) {
+      localPaths.push(await cacheSeedImage(remoteImages[j], `l${i}-${j}.jpg`))
+    }
 
     await prisma.carListing.create({
       data: {
@@ -344,8 +364,8 @@ async function main() {
         likeCount: Math.floor(Math.random() * 30),
         publishedAt: new Date(),
         images: {
-          create: images.map((url, idx) => ({
-            url,
+          create: localPaths.map((p, idx) => ({
+            path: p,
             order: idx,
             isPrimary: idx === 0,
           })),

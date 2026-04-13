@@ -83,8 +83,8 @@ export default function ChatThreadPage() {
           {/* Listing thumbnail */}
           <Link href={`/listing/${listing.id}`}>
             <div className="w-12 h-12 rounded-2xl overflow-hidden bg-surface-container relative flex-shrink-0">
-              {listing.images?.[0]?.url ? (
-                <Image src={listing.images[0].url} alt="" fill className="object-cover" />
+              {listing.images?.[0]?.path ? (
+                <Image src={listing.images[0].path} alt="" fill className="object-cover" />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <MessageCircle className="w-5 h-5 text-on-surface-variant" />
