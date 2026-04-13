@@ -97,6 +97,12 @@ export interface MessageThread {
   /** Server cap (e.g. OPEN marketplace); omit to use client default. */
   buyerMessageLimit?: number
   sellerHasReplied: boolean
+  /** Super like: buyer sent a super like when this thread was created */
+  isSuperLike: boolean
+  /** false = pending (seller hasn't activated), true = full active chat */
+  isActive: boolean
+  /** 'BUYER' | 'SELLER' — who initiated the thread */
+  initiatedBy?: string
 }
 
 export interface Message {
@@ -118,6 +124,8 @@ export interface User {
   roles: string[]
   isVerified: boolean
   isOnboarded: boolean
+  /** Remaining super likes; starts at 10, decreases on each super swipe */
+  superLikesRemaining: number
 }
 
 export interface BuyerPreferences {

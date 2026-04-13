@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import Slider from '@react-native-community/slider'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { api } from '../../src/lib/api'
 import { VehicleType, FuelType } from '../../src/types'
@@ -18,12 +18,9 @@ import { formatILS } from '../../src/lib/utils/format'
 const ONBOARDING_DRAFT_KEY = 'autoswipe_onboarding_draft'
 
 type Step =
-  | 'role'
   | 'prefs'
   | 'notifications'
   | 'messaging-mode'
-  | 'buyer-done'
-  | 'seller-done'
   | 'both-done'
 
 const RADIUS_OPTIONS = [
@@ -48,40 +45,24 @@ const EMAIL_FREQ = [
   { value: 'WEEKLY',    label: 'פעם בשבוע' },
 ]
 
-function getInitialStep(roleParam?: string): Step {
-  if (!roleParam) return 'role'
-  if (roleParam === 'SELLER') return 'messaging-mode'
-  return 'prefs'
-}
-
-function getNextStep(current: Step, role: string): Step {
+function getNextStep(current: Step): Step {
   switch (current) {
-    case 'role':
-      return role === 'SELLER' ? 'messaging-mode' : 'prefs'
-    case 'prefs':
-      return 'notifications'
-    case 'notifications':
-      return role === 'BOTH' ? 'messaging-mode' : 'buyer-done'
-    case 'messaging-mode':
-      return role === 'BOTH' ? 'both-done' : 'seller-done'
-    default:
-      return 'buyer-done'
+    case 'prefs':         return 'notifications'
+    case 'notifications': return 'messaging-mode'
+    case 'messaging-mode': return 'both-done'
+    default:              return 'both-done'
   }
 }
 
-function getProgressSteps(role: string): Step[] {
-  if (role === 'BUYER')  return ['prefs', 'notifications', 'buyer-done']
-  if (role === 'SELLER') return ['messaging-mode', 'seller-done']
-  if (role === 'BOTH')   return ['prefs', 'notifications', 'messaging-mode', 'both-done']
-  return []
-}
+// All users are always both buyer and seller — fixed progress path
+const PROGRESS_STEPS: Step[] = ['prefs', 'notifications', 'messaging-mode', 'both-done']
 
 export default function OnboardingScreen() {
   const router = useRouter()
-  const { role: roleParam } = useLocalSearchParams<{ role?: string }>()
 
-  const [step, setStep]   = useState<Step>(() => getInitialStep(roleParam))
-  const [role, setRole]   = useState<string>(roleParam ?? '')
+  // All users are BOTH buyer and seller — no role selection needed
+  const role = 'BOTH'
+  const [step, setStep]   = useState<Step>('prefs')
   const [loading, setLoading] = useState(false)
 
   // Buyer prefs
@@ -113,7 +94,7 @@ export default function OnboardingScreen() {
       if (!raw) return
       try {
         const d = JSON.parse(raw)
-        if (d.role && !roleParam) { setRole(d.role); setStep(d.step ?? getInitialStep(d.role)) }
+        if (d.step && PROGRESS_STEPS.includes(d.step)) setStep(d.step)
         if (d.vehicleTypes) setVehicleTypes(d.vehicleTypes)
         if (d.fuelTypes)    setFuelTypes(d.fuelTypes)
         if (d.budgetMin !== undefined) setBudgetMin(d.budgetMin)
@@ -130,7 +111,6 @@ export default function OnboardingScreen() {
         if (d.emailFrequency)  setEmailFrequency(d.emailFrequency)
         if (d.pushNotifications !== undefined) setPushNotifications(d.pushNotifications)
         if (d.messagingMode) setMessagingMode(d.messagingMode)
-        if (d.step && roleParam) setStep(d.step)
       } catch { /* ignore */ }
     })
   }, [])
@@ -150,56 +130,12 @@ export default function OnboardingScreen() {
   }
 
   function advance() {
-    const next = getNextStep(step, role)
+    const next = getNextStep(step)
     saveDraft({ step: next })
     setStep(next)
   }
 
-  // ── Finish: buyer or buyer part of both ──────────────────────────────────
-  async function finishBuyer(dest: string) {
-    setLoading(true)
-    try {
-      await api.put('/api/users/preferences', {
-        vehicleTypes,
-        fuelPreferences: fuelTypes,
-        budgetMin,
-        budgetMax,
-        yearFrom:   yearFrom   ? parseInt(yearFrom, 10)   : undefined,
-        yearTo:     yearTo     ? parseInt(yearTo, 10)     : undefined,
-        mileageMin: mileageMin ? parseInt(mileageMin, 10) : undefined,
-        mileageMax: mileageMax ? parseInt(mileageMax, 10) : undefined,
-        location,
-        searchRadius: radius,
-        ownershipYears: 3,
-        preferredBrands: anyBrand ? [] : brands,
-        preferredModels: [],
-        roles: role === 'BOTH' ? ['BUYER', 'SELLER'] : ['BUYER'],
-      })
-      await api.put('/api/users/me', { emailNotifications, emailFrequency, pushNotifications })
-      await AsyncStorage.removeItem(ONBOARDING_DRAFT_KEY)
-    } catch { /* proceed anyway */ }
-    setLoading(false)
-    router.replace(dest as any)
-  }
-
-  // ── Finish: seller ───────────────────────────────────────────────────────
-  async function finishSeller(dest: string) {
-    setLoading(true)
-    try {
-      await api.put('/api/users/me', {
-        messagingMode,
-        isOnboarded: true,
-        emailNotifications: true,
-        emailFrequency: 'IMMEDIATE',
-        pushNotifications: true,
-      })
-      await AsyncStorage.removeItem(ONBOARDING_DRAFT_KEY)
-    } catch { /* proceed anyway */ }
-    setLoading(false)
-    router.replace(dest as any)
-  }
-
-  // ── Finish: both ─────────────────────────────────────────────────────────
+  // ── Finish: all users are both buyer and seller ──────────────────────────
   async function finishBoth(dest: string) {
     setLoading(true)
     try {
@@ -226,44 +162,7 @@ export default function OnboardingScreen() {
     router.replace(dest as any)
   }
 
-  const progressSteps = role ? getProgressSteps(role) : []
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // ROLE SELECTION (shown if no role param was passed from signup)
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'role') {
-    const ROLE_CARDS = [
-      { value: 'BUYER',  emoji: '🛍️', label: 'לקנות רכב',  sub: 'גלה מכוניות עם סוואיפ חכם' },
-      { value: 'SELLER', emoji: '🚗', label: 'למכור רכב',  sub: 'פרסם מודעה בחינם תוך דקות' },
-      { value: 'BOTH',   emoji: '👥', label: 'גם וגם',     sub: 'לקנות וגם למכור' },
-    ]
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', padding: 24 }}>
-        <Text style={[s.h1, { marginTop: 16, marginBottom: 24 }]}>אני רוצה...</Text>
-        <View style={{ gap: 14 }}>
-          {ROLE_CARDS.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              onPress={() => {
-                const r = opt.value
-                setRole(r)
-                const next = getNextStep('role', r)
-                saveDraft({ role: r, step: next })
-                setStep(next)
-              }}
-              style={s.roleCard}
-            >
-              <View style={{ alignItems: 'flex-end', flex: 1 }}>
-                <Text style={s.roleLabel}>{opt.label}</Text>
-                <Text style={s.roleSub}>{opt.sub}</Text>
-              </View>
-              <Text style={{ fontSize: 36 }}>{opt.emoji}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </SafeAreaView>
-    )
-  }
+  const progressSteps = PROGRESS_STEPS
 
   // ══════════════════════════════════════════════════════════════════════════
   // BUYER PREFERENCES (one big scrollable screen)
@@ -482,7 +381,7 @@ export default function OnboardingScreen() {
           </View>
         </ScrollView>
 
-        <NavBar onBack={() => setStep('role')} onNext={advance} onSkip={advance} />
+        <NavBar onBack={() => router.back()} onNext={advance} onSkip={advance} />
       </SafeAreaView>
     )
   }
@@ -579,7 +478,7 @@ export default function OnboardingScreen() {
         extra: 'מתאים אם אתה רוצה שקט ורוצה לסנן לפני שמדברים.',
       },
     ]
-    const prevStep: Step = role === 'BOTH' ? 'notifications' : 'role'
+    const prevStep: Step = 'notifications'
 
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
@@ -624,70 +523,7 @@ export default function OnboardingScreen() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // BUYER DONE
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'buyer-done') {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', padding: 24, justifyContent: 'center' }}>
-        <View style={{ alignItems: 'center', marginBottom: 36 }}>
-          <View style={s.doneIcon}><Text style={{ fontSize: 44 }}>🚗</Text></View>
-          <Text style={s.doneTitle}>הפרופיל מוכן!</Text>
-          <Text style={s.doneSub}>
-            הפיד שלך יהיה מותאם אישית לפי ההעדפות שבחרת. אפשר לשנות בכל עת מהגדרות.
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => finishBuyer('/(tabs)/swipe')}
-          disabled={loading}
-          style={[s.primaryBtn, { opacity: loading ? 0.7 : 1 }]}
-        >
-          {loading
-            ? <ActivityIndicator color="#0F0F0F" />
-            : <Text style={s.primaryBtnText}>סיום — לך לגלות רכבים 🚗 ←</Text>
-          }
-        </TouchableOpacity>
-      </SafeAreaView>
-    )
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SELLER DONE
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'seller-done') {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', padding: 24, justifyContent: 'center' }}>
-        <View style={{ alignItems: 'center', marginBottom: 36 }}>
-          <View style={s.doneIcon}><Text style={{ fontSize: 44 }}>🎉</Text></View>
-          <Text style={s.doneTitle}>מוכן לפרסם!</Text>
-          <Text style={s.doneSub}>
-            החשבון שלך מוכן. עכשיו אפשר לפרסם את הרכב שלך ולהתחיל לקבל פניות.
-          </Text>
-        </View>
-        <View style={{ gap: 14 }}>
-          <TouchableOpacity
-            onPress={() => finishSeller('/listing/create/index')}
-            disabled={loading}
-            style={[s.primaryBtn, { opacity: loading ? 0.7 : 1 }]}
-          >
-            {loading
-              ? <ActivityIndicator color="#0F0F0F" />
-              : <Text style={s.primaryBtnText}>פרסם רכב עכשיו 🚗 ←</Text>
-            }
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => finishSeller('/(tabs)/swipe')}
-            disabled={loading}
-            style={s.outlineBtn}
-          >
-            <Text style={s.outlineBtnText}>קודם אסתכל סביב</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // BOTH DONE
+  // DONE (everyone is both buyer and seller)
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'both-done') {
     return (
