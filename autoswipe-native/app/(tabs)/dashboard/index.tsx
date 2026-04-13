@@ -58,9 +58,16 @@ export default function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#D4A843" />
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#D4A843" />
+        </View>
+      </SafeAreaView>
     )
   }
 
@@ -68,12 +75,17 @@ export default function DashboardScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <TouchableOpacity
-          onPress={() => router.push('/listing/create/')}
-          style={{ backgroundColor: '#D4A843', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 }}
-        >
-          <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>+ מודעה חדשה</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/listing/create/')}
+            style={{ backgroundColor: '#D4A843', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 }}
+          >
+            <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>+ מודעה חדשה</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={{ fontSize: 22, fontWeight: '800', color: '#F5F5F5', textAlign: 'right' }}>
           מודעות שלי 🚗
         </Text>

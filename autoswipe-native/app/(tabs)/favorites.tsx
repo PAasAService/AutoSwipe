@@ -51,6 +51,9 @@ export default function FavoritesScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 8 }}>
+            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
           <Skeleton width={180} height={28} borderRadius={8} />
           <View style={{ marginTop: 8 }}>
             <Skeleton width={120} height={16} borderRadius={6} />
@@ -75,20 +78,27 @@ export default function FavoritesScreen() {
 
   if (!favorites?.length) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>❤️</Text>
-        <Text style={{ color: '#F5F5F5', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
-          אין רכבים שמורים עדיין
-        </Text>
-        <Text style={{ color: '#888888', textAlign: 'center', fontSize: 15, marginBottom: 24 }}>
-          החלק ימינה על רכבים שאהבת כדי לשמור אותם כאן
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.push('/(tabs)/swipe')}
-          style={{ backgroundColor: '#D4A843', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}
-        >
-          <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 16 }}>חזור לגלול</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 64, marginBottom: 16 }}>❤️</Text>
+          <Text style={{ color: '#F5F5F5', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+            אין רכבים שמורים עדיין
+          </Text>
+          <Text style={{ color: '#888888', textAlign: 'center', fontSize: 15, marginBottom: 24 }}>
+            החלק ימינה על רכבים שאהבת כדי לשמור אותם כאן
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/swipe')}
+            style={{ backgroundColor: '#D4A843', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 }}
+          >
+            <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 16 }}>חזור לגלול</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     )
   }
@@ -96,9 +106,14 @@ export default function FavoritesScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 }}>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: '#F5F5F5', textAlign: 'right' }}>
-          המועדפים שלי ❤️
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#F5F5F5', textAlign: 'right' }}>
+            המועדפים שלי ❤️
+          </Text>
+        </View>
         <Text style={{ color: '#888888', textAlign: 'right', marginTop: 2 }}>
           {favorites.length} רכבים שמורים
         </Text>
