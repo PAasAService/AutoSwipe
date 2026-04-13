@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { View, Text, Switch, ScrollView, TouchableOpacity } from 'react-native'
+import { View, Text, Switch, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../../src/lib/go-back-safe'
+import { useReturnTo } from '../../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../../src/constants/layout'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
 import { api } from '../../../src/lib/api'
@@ -18,7 +21,7 @@ const DEFAULT_SETTINGS: Record<string, boolean> = {
 }
 
 export default function NotificationsScreen() {
-  const router = useRouter()
+  const returnTo = useReturnTo()
   const [settings, setSettings] = useState<Record<string, boolean>>(DEFAULT_SETTINGS)
 
   const { data } = useQuery({
@@ -46,17 +49,15 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingBottom: 12 }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: '#D4A843', fontSize: 16 }}>סגור</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#F5F5F5', fontSize: 20, fontWeight: '700' }}>התראות</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/settings')}
+        backVariant="text"
+        backLabel="סגור"
+        title="התראות"
+      />
 
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 0 }}>
+      <ScrollView contentContainerStyle={{ padding: SCREEN_EDGE, gap: 0 }}>
         {SETTINGS.map((s) => (
           <View
             key={s.key}

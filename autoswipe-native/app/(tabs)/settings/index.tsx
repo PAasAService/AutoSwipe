@@ -1,6 +1,10 @@
+import { useCallback, useRef } from 'react'
 import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
+import { hrefWithReturn } from '../../../src/lib/go-back-safe'
+import { getSettingsScrollY, rememberSettingsScrollY } from '../../../src/lib/settings-scroll-memory'
 import { clearToken } from '../../../src/lib/api'
 import { unregisterPushDevice } from '../../../src/lib/unregister-push-device'
 import { queryClient } from '../../../src/lib/query-client'
@@ -9,6 +13,21 @@ import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 export default function SettingsScreen() {
   const router = useRouter()
   const { data: me } = useCurrentUser()
+  const scrollRef = useRef<ScrollView>(null)
+  const scrollYRef = useRef(0)
+
+  useFocusEffect(
+    useCallback(() => {
+      const y = getSettingsScrollY()
+      const id = requestAnimationFrame(() => {
+        if (y > 0) scrollRef.current?.scrollTo({ y, animated: false })
+      })
+      return () => {
+        cancelAnimationFrame(id)
+        rememberSettingsScrollY(scrollYRef.current)
+      }
+    }, []),
+  )
 
   async function handleLogout() {
     Alert.alert('התנתקות', 'האם אתה בטוח שברצונך להתנתק?', [
@@ -34,9 +53,16 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ padding: 20 }}
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y
+        }}
+        scrollEventThrottle={100}
+      >
 
-        {/* Profile Header */}
+        {/* Profile header — name is display name (editable under ערוך פרופיל) */}
         <View style={{
           backgroundColor: '#1A1A1A',
           borderRadius: 16,
@@ -54,8 +80,19 @@ export default function SettingsScreen() {
               {me?.name?.[0]?.toUpperCase() ?? '?'}
             </Text>
           </View>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#F5F5F5' }}>{me?.name ?? ''}</Text>
-          <Text style={{ color: '#888888', marginTop: 2 }}>{me?.email ?? ''}</Text>
+          <Text style={{ color: '#888888', fontSize: 12, marginBottom: 2 }}>שם תצוגה</Text>
+          <Text style={{ color: '#555555', fontSize: 11, marginBottom: 4, textAlign: 'right' }}>ייחודי במערכת</Text>
+          <TouchableOpacity
+            onPress={() => router.push(hrefWithReturn('/profile/edit', 'settings'))}
+            accessibilityRole="button"
+            accessibilityLabel="ערוך שם תצוגה"
+            hitSlop={{ top: 6, bottom: 6, left: 12, right: 12 }}
+          >
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#F5F5F5' }}>{me?.name?.trim() || '—'}</Text>
+            <Text style={{ color: '#D4A843', fontSize: 13, marginTop: 4, textAlign: 'right' }}>עריכה ›</Text>
+          </TouchableOpacity>
+          <Text style={{ color: '#888888', marginTop: 10, fontSize: 12 }}>אימייל</Text>
+          <Text style={{ color: '#AAAAAA', marginTop: 2, fontSize: 15 }}>{me?.email ?? ''}</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             {roles.includes('BUYER') && (
               <View style={{ backgroundColor: 'rgba(212,168,67,0.15)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(212,168,67,0.4)' }}>
@@ -72,29 +109,35 @@ export default function SettingsScreen() {
 
         {/* Search Preferences */}
         <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right', marginBottom: 8, marginRight: 4 }}>העדפות חיפוש</Text>
-        <MenuItem emoji="🎯" label="העדפות חיפוש" onPress={() => router.push('/(tabs)/settings/preferences')} />
+        <MenuItem emoji="🎯" label="העדפות חיפוש" onPress={() => router.push(hrefWithReturn('/(tabs)/settings/preferences', 'settings'))} />
 
         <View style={{ height: 20 }} />
 
         {/* Account */}
         <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right', marginBottom: 8, marginRight: 4 }}>חשבון</Text>
-        <MenuItem emoji="✏️" label="ערוך פרופיל" onPress={() => router.push('/profile/edit')} />
-        <MenuItem emoji="🔔" label="התראות" onPress={() => router.push('/(tabs)/settings/notifications')} />
-        <MenuItem emoji="🔒" label="אבטחה ופרטיות" onPress={() => router.push('/(tabs)/settings/security')} />
+        <MenuItem emoji="✏️" label="שם תצוגה, טלפון ועוד" onPress={() => router.push(hrefWithReturn('/profile/edit', 'settings'))} />
+        <MenuItem emoji="📥" label="כל ההתראות" onPress={() => router.push(hrefWithReturn('/notifications', 'settings'))} />
+        <MenuItem emoji="🔔" label="הגדרות התראות" onPress={() => router.push(hrefWithReturn('/(tabs)/settings/notifications', 'settings'))} />
+        <MenuItem emoji="🔒" label="אבטחה ופרטיות" onPress={() => router.push(hrefWithReturn('/(tabs)/settings/security', 'settings'))} />
 
         <View style={{ height: 20 }} />
 
         {/* Activity */}
         <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right', marginBottom: 8, marginRight: 4 }}>פעילות</Text>
-        <MenuItem emoji="❤️" label="המועדפים שלי" onPress={() => router.push('/(tabs)/favorites')} />
-        <MenuItem emoji="🚗" label="המודעות שלי" onPress={() => router.push('/(tabs)/dashboard')} />
+        <MenuItem
+          emoji="❤️"
+          label="המועדפים שלי"
+          onPress={() => router.push(hrefWithReturn('/(tabs)/favorites', 'settings'))}
+        />
+        <MenuItem emoji="⚖️" label="השוואת רכבים" onPress={() => router.push(hrefWithReturn('/compare', 'settings'))} />
+        <MenuItem emoji="🚗" label="המודעות שלי" onPress={() => router.push(hrefWithReturn('/(tabs)/dashboard', 'settings'))} />
 
         <View style={{ height: 20 }} />
 
         {/* Legal */}
         <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right', marginBottom: 8, marginRight: 4 }}>משפטי וסיוע</Text>
-        <MenuItem emoji="📄" label="מדיניות פרטיות" onPress={() => router.push('/legal/privacy')} />
-        <MenuItem emoji="📋" label="תנאי שימוש" onPress={() => router.push('/legal/terms')} />
+        <MenuItem emoji="📄" label="מדיניות פרטיות" onPress={() => router.push(hrefWithReturn('/legal/privacy', 'settings'))} />
+        <MenuItem emoji="📋" label="תנאי שימוש" onPress={() => router.push(hrefWithReturn('/legal/terms', 'settings'))} />
         <MenuItem
           emoji="🆘"
           label="שירות לקוחות ועזרה"

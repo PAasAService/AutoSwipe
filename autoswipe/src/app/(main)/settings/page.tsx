@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { SignOutButton } from '@/components/auth/SignOutButton'
 import { FUEL_TYPE_HE, VEHICLE_TYPE_HE } from '@/lib/constants/cars'
 import {
-  Bell, Shield, ChevronLeft, Heart, Settings2, Car, MapPin, Wallet
+  Bell, Shield, ChevronLeft, Heart, Settings2, Car, MapPin, Wallet,
+  Inbox, GitCompareArrows, FileText, Scale, User,
 } from 'lucide-react'
 
 export default async function SettingsPage() {
@@ -81,14 +82,23 @@ export default async function SettingsPage() {
 
         {/* Account */}
         <Section title="חשבון">
-          <SettingsLink icon={Bell} label="התראות" href="/settings/notifications" />
+          <SettingsLink icon={User} label="עריכת פרופיל" href="/settings/profile" />
+          <SettingsLink icon={Inbox} label="כל ההתראות" href="/notifications" />
+          <SettingsLink icon={Bell} label="הגדרות התראות" href="/settings/notifications" />
           <SettingsLink icon={Shield} label="אבטחה ופרטיות" href="/settings/security" />
         </Section>
 
         {/* Activity */}
         <Section title="פעילות">
           <SettingsLink icon={Heart} label="המועדפים שלי" href="/favorites" />
+          <SettingsLink icon={GitCompareArrows} label="השוואת רכבים" href="/compare" />
           <SettingsLink icon={Car} label="המודעות שלי" href="/dashboard" />
+        </Section>
+
+        {/* Legal — matches native settings */}
+        <Section title="משפטי וסיוע">
+          <SettingsLink icon={FileText} label="מדיניות פרטיות" href="/privacy" />
+          <SettingsLink icon={Scale} label="תנאי שימוש" href="/terms" />
         </Section>
 
         {/* Sign out */}

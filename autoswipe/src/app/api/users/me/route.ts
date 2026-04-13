@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { getAuthUser } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/db'
+import {
+  USER_DISPLAY_NAME_TAKEN_CODE,
+  USER_DISPLAY_NAME_TAKEN_HE,
+} from '@/lib/user-display-name'
 
 export async function GET(req: NextRequest) {
   const authUser = await getAuthUser(req)
@@ -37,6 +41,10 @@ export async function GET(req: NextRequest) {
         },
       },
     })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     return NextResponse.json({ data: user })
   } catch (err) {
@@ -86,8 +94,21 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  if (typeof name === 'string' && name.trim().length > 0) {
+    const trimmed = name.trim().slice(0, 80)
+    const conflict = await prisma.user.findFirst({
+      where: { name: trimmed, NOT: { id: authUser.id } },
+    })
+    if (conflict) {
+      return NextResponse.json(
+        { error: USER_DISPLAY_NAME_TAKEN_HE, code: USER_DISPLAY_NAME_TAKEN_CODE },
+        { status: 409 }
+      )
+    }
+  }
+
   const data: Prisma.UserUpdateInput = {
-    ...(name && { name: name.trim() }),
+    ...(name && { name: name.trim().slice(0, 80) }),
     ...(phone !== undefined && { phone: phone?.trim() ?? null }),
     ...(messagingMode !== undefined && { messagingMode }),
     ...(emailNotifications !== undefined && { emailNotifications }),
@@ -112,7 +133,7 @@ export async function PUT(req: NextRequest) {
     }
     const valid = await bcrypt.compare(currentPassword!, existing.passwordHash)
     if (!valid) {
-      return NextResponse.json({ message: 'סיסמה נוכחית שגויה' }, { status: 401 })
+      return NextResponse.json({ message: 'סיסמה נוכחית שגויה' }, { status: 400 })
     }
     data.passwordHash = await bcrypt.hash(newPassword!, 10)
   }
@@ -139,11 +160,24 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ data: user })
   }
 
-  const updated = await prisma.user.update({
-    where: { id: authUser.id },
-    data,
-    select,
-  })
+  try {
+    const updated = await prisma.user.update({
+      where: { id: authUser.id },
+      data,
+      select,
+    })
 
-  return NextResponse.json({ data: updated })
+    return NextResponse.json({ data: updated })
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const target = (err.meta as { target?: string[] } | undefined)?.target
+      if (Array.isArray(target) && target.includes('name')) {
+        return NextResponse.json(
+          { error: USER_DISPLAY_NAME_TAKEN_HE, code: USER_DISPLAY_NAME_TAKEN_CODE },
+          { status: 409 }
+        )
+      }
+    }
+    throw err
+  }
 }

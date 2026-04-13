@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { verifyAppleIdToken, verifyGoogleIdToken } from '@/lib/oauth-verify'
 import { jwtUserPayload, signAppJwt } from '@/lib/jwt-mobile'
+import {
+  USER_DISPLAY_NAME_TAKEN_CODE,
+  USER_DISPLAY_NAME_TAKEN_HE,
+} from '@/lib/user-display-name'
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 function checkRateLimit(ip: string, maxRequests: number, windowMs: number): boolean {
@@ -20,6 +25,8 @@ function checkRateLimit(ip: string, maxRequests: number, windowMs: number): bool
 const bodySchema = z.object({
   provider: z.enum(['google', 'apple']),
   idToken: z.string().min(10),
+  /** Native Apple/Google may send display name (e.g. Apple only includes full name in the SDK on first sign-in). */
+  displayName: z.string().max(80).optional(),
 })
 
 /**
@@ -56,10 +63,26 @@ function appleAudiences(): string[] {
   return Array.from(set)
 }
 
+/** Ensures auto-generated SSO names never collide (user-chosen names are validated separately). */
+async function uniqueAutoDisplayName(base: string): Promise<string> {
+  const slug = (base.trim().slice(0, 80) || 'משתמש').slice(0, 80)
+  for (let i = 0; i < 5000; i++) {
+    const suffix = i === 0 ? '' : `_${i}`
+    const candidate = (slug.slice(0, Math.max(1, 80 - suffix.length)) + suffix).slice(0, 80)
+    const clash = await prisma.user.findFirst({ where: { name: candidate } })
+    if (!clash) return candidate
+  }
+  return `${slug.slice(0, 50)}_${Date.now()}`.slice(0, 80)
+}
+
 /**
- * POST /api/auth/oauth
- * Body: { provider: 'google' | 'apple', idToken: string }
- * Returns same shape as /api/auth/credentials (app JWT + user).
+ * POST /api/auth/oauth — sign-in or register in one step (native SSO).
+ * Body: { provider, idToken, displayName? } — `displayName` optional (Apple SDK full name, etc.).
+ *
+ * Resolution order:
+ * 1. Existing OAuth link (provider + provider `sub`) → JWT for that user, `created: false`.
+ * 2. Else if ID token has an email and a user exists with that email → link OAuth row, JWT, `created: false`.
+ * 3. Else → create user + OAuth link, JWT, `created: true` (HTTP 201).
  */
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown'
@@ -72,7 +95,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { provider, idToken } = bodySchema.parse(await req.json())
+    const { provider, idToken, displayName: displayNameRaw } = bodySchema.parse(await req.json())
+    const displayFromClient =
+      typeof displayNameRaw === 'string' && displayNameRaw.trim().length > 0
+        ? displayNameRaw.trim().slice(0, 80)
+        : undefined
 
     if (provider === 'google' && googleAudiences().length === 0) {
       return NextResponse.json(
@@ -103,11 +130,22 @@ export async function POST(req: NextRequest) {
         ? emailClaim.toLowerCase()
         : null
     const nameFromToken =
-      typeof payload.name === 'string'
-        ? payload.name
+      typeof payload.name === 'string' && payload.name.trim().length > 0
+        ? payload.name.trim()
         : email
-          ? email.split('@')[0]
+          ? email.split('@')[0]!
           : 'משתמש'
+
+    const resolvedName = displayFromClient ?? nameFromToken
+
+    function isPlaceholderName(userName: string, userEmail: string | null): boolean {
+      if (userName === 'משתמש') return true
+      if (userEmail && userEmail.includes('@')) {
+        const local = userEmail.split('@')[0]!
+        if (userName === local) return true
+      }
+      return false
+    }
 
     const existingLink = await prisma.oAuthAccount.findUnique({
       where: {
@@ -117,43 +155,140 @@ export async function POST(req: NextRequest) {
     })
 
     if (existingLink) {
-      const token = await signAppJwt(existingLink.user)
-      return NextResponse.json({ token, user: jwtUserPayload(existingLink.user) })
+      let user = existingLink.user
+      if (displayFromClient && isPlaceholderName(user.name, user.email)) {
+        const taken = await prisma.user.findFirst({
+          where: { name: displayFromClient, NOT: { id: user.id } },
+        })
+        if (!taken) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { name: displayFromClient },
+          })
+        }
+      }
+      const token = await signAppJwt(user)
+      return NextResponse.json({
+        token,
+        user: jwtUserPayload(user),
+        created: false,
+      })
     }
 
     if (email) {
       const byEmail = await prisma.user.findUnique({ where: { email } })
       if (byEmail) {
-        await prisma.oAuthAccount.create({
-          data: {
-            userId: byEmail.id,
-            provider,
-            providerAccountId,
-          },
+        try {
+          await prisma.oAuthAccount.create({
+            data: {
+              userId: byEmail.id,
+              provider,
+              providerAccountId,
+            },
+          })
+        } catch (e) {
+          if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+            const link = await prisma.oAuthAccount.findUnique({
+              where: { provider_providerAccountId: { provider, providerAccountId } },
+              include: { user: true },
+            })
+            if (link) {
+              const token = await signAppJwt(link.user)
+              return NextResponse.json({
+                token,
+                user: jwtUserPayload(link.user),
+                created: false,
+              })
+            }
+          }
+          throw e
+        }
+        let linkedUser = await prisma.user.findUniqueOrThrow({ where: { id: byEmail.id } })
+        if (displayFromClient && isPlaceholderName(byEmail.name, byEmail.email)) {
+          const taken = await prisma.user.findFirst({
+            where: { name: displayFromClient, NOT: { id: byEmail.id } },
+          })
+          if (!taken) {
+            linkedUser = await prisma.user.update({
+              where: { id: byEmail.id },
+              data: { name: displayFromClient },
+            })
+          }
+        }
+        const token = await signAppJwt(linkedUser)
+        return NextResponse.json({
+          token,
+          user: jwtUserPayload(linkedUser),
+          created: false,
         })
-        const token = await signAppJwt(byEmail)
-        return NextResponse.json({ token, user: jwtUserPayload(byEmail) })
       }
     }
 
     const syntheticEmail = `${provider}_${providerAccountId}@oauth.autoswipe.local`
 
-    const user = await prisma.user.create({
-      data: {
-        email: email ?? syntheticEmail,
-        name: nameFromToken,
-        passwordHash: null,
-        oauthAccounts: {
-          create: { provider, providerAccountId },
-        },
-      },
-    })
+    if (displayFromClient) {
+      const taken = await prisma.user.findFirst({ where: { name: displayFromClient } })
+      if (taken) {
+        return NextResponse.json(
+          {
+            message: USER_DISPLAY_NAME_TAKEN_HE,
+            error: USER_DISPLAY_NAME_TAKEN_HE,
+            code: USER_DISPLAY_NAME_TAKEN_CODE,
+          },
+          { status: 409 }
+        )
+      }
+    }
 
-    const token = await signAppJwt(user)
-    return NextResponse.json(
-      { token, user: jwtUserPayload(user) },
-      { status: 201 }
-    )
+    const finalCreateName = displayFromClient
+      ? displayFromClient
+      : await uniqueAutoDisplayName(resolvedName)
+
+    try {
+      const user = await prisma.user.create({
+        data: {
+          email: email ?? syntheticEmail,
+          name: finalCreateName,
+          passwordHash: null,
+          oauthAccounts: {
+            create: { provider, providerAccountId },
+          },
+        },
+      })
+
+      const token = await signAppJwt(user)
+      return NextResponse.json(
+        { token, user: jwtUserPayload(user), created: true },
+        { status: 201 }
+      )
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const target = (e.meta as { target?: string[] } | undefined)?.target
+        if (Array.isArray(target) && target.includes('name') && displayFromClient) {
+          return NextResponse.json(
+            {
+              message: USER_DISPLAY_NAME_TAKEN_HE,
+              error: USER_DISPLAY_NAME_TAKEN_HE,
+              code: USER_DISPLAY_NAME_TAKEN_CODE,
+            },
+            { status: 409 }
+          )
+        }
+        const link = await prisma.oAuthAccount.findUnique({
+          where: { provider_providerAccountId: { provider, providerAccountId } },
+          include: { user: true },
+        })
+        if (link) {
+          const token = await signAppJwt(link.user)
+          return NextResponse.json({
+            token,
+            user: jwtUserPayload(link.user),
+            created: false,
+          })
+        }
+      }
+      throw e
+    }
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ message: 'בקשה לא תקינה' }, { status: 400 })

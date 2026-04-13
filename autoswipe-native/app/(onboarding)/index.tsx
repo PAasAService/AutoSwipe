@@ -6,6 +6,9 @@ import {
 import Slider from '@react-native-community/slider'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { goBackSafe } from '../../src/lib/go-back-safe'
+import { FORWARD_ICON, BACK_WITH_LABEL_FONT_SIZE } from '../../src/constants/ui'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { api } from '../../src/lib/api'
 import { VehicleType, FuelType } from '../../src/types'
@@ -57,7 +60,6 @@ const PROGRESS_STEPS: Step[] = ['prefs', 'notifications', 'both-done']
 
 export default function OnboardingScreen() {
   const router = useRouter()
-
   // All users are BOTH buyer and seller — no role selection needed
   const role = 'BOTH'
   const [step, setStep]   = useState<Step>('prefs')
@@ -171,8 +173,15 @@ export default function OnboardingScreen() {
       : []
 
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-        <ProgressDots steps={progressSteps} current={step} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafe('/(auth)/login')}
+          center={(
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ProgressDots steps={progressSteps} current={step} />
+            </View>
+          )}
+        />
         <ScrollView contentContainerStyle={{ padding: 22, paddingBottom: 120 }}>
 
           <Text style={s.h1}>מה חשוב לך ברכב?</Text>
@@ -379,7 +388,7 @@ export default function OnboardingScreen() {
           </View>
         </ScrollView>
 
-        <NavBar onBack={() => router.back()} onNext={advance} onSkip={advance} />
+        <NavBar onNext={advance} onSkip={advance} />
       </SafeAreaView>
     )
   }
@@ -389,8 +398,15 @@ export default function OnboardingScreen() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'notifications') {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-        <ProgressDots steps={progressSteps} current={step} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => setStep('prefs')}
+          center={(
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ProgressDots steps={progressSteps} current={step} />
+            </View>
+          )}
+        />
         <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 120 }}>
           <Text style={s.h1}>תישאר מעודכן</Text>
           <Text style={[s.subtitle, { marginBottom: 28 }]}>
@@ -451,7 +467,7 @@ export default function OnboardingScreen() {
           </View>
         </ScrollView>
 
-        <NavBar onBack={() => setStep('prefs')} onNext={advance} onSkip={advance} />
+        <NavBar onNext={advance} onSkip={advance} />
       </SafeAreaView>
     )
   }
@@ -551,19 +567,13 @@ function SmallChip({ label, selected, onPress }: { label: string; selected: bool
   )
 }
 
-function NavBar({ onBack, onNext, onSkip }: { onBack: () => void; onNext: () => void; onSkip: () => void }) {
+function NavBar({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
   return (
     <View style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
       backgroundColor: '#0F0F0F', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)',
       flexDirection: 'row', padding: 16, paddingBottom: 28, gap: 10,
     }}>
-      <TouchableOpacity
-        onPress={onBack}
-        style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, backgroundColor: '#1A1A1A' }}
-      >
-        <Text style={{ color: '#F5F5F5', fontWeight: '600' }}>→</Text>
-      </TouchableOpacity>
       <TouchableOpacity onPress={onSkip} style={{ paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12 }}>
         <Text style={{ color: '#888', fontWeight: '500' }}>דלג</Text>
       </TouchableOpacity>
@@ -571,7 +581,7 @@ function NavBar({ onBack, onNext, onSkip }: { onBack: () => void; onNext: () => 
         onPress={onNext}
         style={{ flex: 1, backgroundColor: '#D4A843', borderRadius: 12, alignItems: 'center', paddingVertical: 14 }}
       >
-        <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 16 }}>הבא ←</Text>
+        <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: BACK_WITH_LABEL_FONT_SIZE }}>{`הבא ${FORWARD_ICON}`}</Text>
       </TouchableOpacity>
     </View>
   )

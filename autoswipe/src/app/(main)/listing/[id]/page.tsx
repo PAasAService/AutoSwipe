@@ -65,6 +65,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
     : false
 
   const primaryImage = listing.images[0]?.path
+  const isOwner = session?.user?.id === listing.sellerId
 
   return (
     <div className="min-h-screen bg-surface-container-lowest" dir="rtl">
@@ -153,6 +154,17 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
               {listing.viewCount} צפיות
             </span>
           </div>
+
+          {isOwner && listing.status !== 'DELETED' && (
+            <div className="mt-4 pt-4 border-t border-outline-variant/15 flex justify-end">
+              <Link
+                href={`/listing/${listing.id}/edit`}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary/15 border border-primary/30 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/25 transition-colors"
+              >
+                ערוך מודעה
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Card 2: Key specs grid */}

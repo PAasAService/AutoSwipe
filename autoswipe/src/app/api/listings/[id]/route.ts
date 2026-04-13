@@ -2,6 +2,81 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
+import { calculateCostBreakdown } from '@/lib/utils/cost-calculator'
+import { classifyDeal, computePriceVsMarket, estimateMarketPrice } from '@/lib/utils/price-intelligence'
+import { syncListingToMarketData } from '@/lib/valuation/market-collector'
+import { replaceListingOrderedImages } from '@/lib/listing-image-storage'
+
+const quickStatusSchema = z.object({
+  status: z.enum(['ACTIVE', 'PAUSED', 'SOLD']),
+})
+
+const patchBodySchema = z
+  .object({
+    brand: z.string().min(1).optional(),
+    model: z.string().min(1).optional(),
+    year: z.number().int().min(2000).max(new Date().getFullYear() + 1).optional(),
+    mileage: z.number().int().min(0).optional(),
+    price: z.number().int().min(1000).optional(),
+    location: z.string().min(1).optional(),
+    fuelType: z.enum(['GASOLINE', 'DIESEL', 'HYBRID', 'ELECTRIC', 'PLUG_IN_HYBRID']).optional(),
+    fuelConsumption: z.number().min(0).max(30).optional(),
+    vehicleType: z
+      .enum([
+        'SEDAN',
+        'SUV',
+        'HATCHBACK',
+        'COUPE',
+        'CONVERTIBLE',
+        'MINIVAN',
+        'PICKUP',
+        'WAGON',
+        'CROSSOVER',
+      ])
+      .optional(),
+    transmission: z.enum(['AUTOMATIC', 'MANUAL']).optional(),
+    engineSize: z.number().min(0).max(200).optional().nullable(),
+    color: z.string().max(100).optional().nullable(),
+    doors: z.number().int().min(2).max(7).optional().nullable(),
+    seats: z.number().int().min(2).max(9).optional().nullable(),
+    insuranceEstimate: z.number().int().min(0).max(100_000).optional(),
+    maintenanceEstimate: z.number().int().min(0).max(100_000).optional(),
+    depreciationRate: z.number().min(0).max(1).optional(),
+    description: z.string().max(2000).optional().nullable(),
+    images: z.array(z.object({ path: z.string().min(8) })).min(1).max(6).optional(),
+    plateNumber: z.string().max(20).optional().nullable(),
+    isGovVerified: z.boolean().optional(),
+    status: z.enum(['ACTIVE', 'PAUSED', 'SOLD']).optional(),
+    whySelling: z.string().max(2000).optional().nullable(),
+    equipment: z.array(z.string().max(80)).max(40).optional(),
+    listingMessagingMode: z.enum(['OPEN', 'SELLER_FIRST']).optional(),
+  })
+  .strict()
+
+const RECOMPUTE_KEYS = new Set([
+  'brand',
+  'model',
+  'year',
+  'mileage',
+  'price',
+  'fuelType',
+  'fuelConsumption',
+  'vehicleType',
+  'transmission',
+  'engineSize',
+  'doors',
+  'seats',
+  'insuranceEstimate',
+  'maintenanceEstimate',
+  'depreciationRate',
+])
+
+function isQuickStatusOnly(raw: unknown): raw is { status: string } {
+  if (!raw || typeof raw !== 'object') return false
+  const keys = Object.keys(raw as object)
+  return keys.length === 1 && keys[0] === 'status'
+}
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const listing = await prisma.carListing.findUnique({
@@ -38,26 +113,148 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!listing || listing.sellerId !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  if (listing.status === 'DELETED') {
+    return NextResponse.json({ error: 'לא ניתן לעדכן מודעה שנמחקה' }, { status: 400 })
+  }
 
-  const body = await req.json()
-  const updateSchema = z.object({
-    price: z.number().int().min(1000).optional(),
-    mileage: z.number().int().min(0).optional(),
-    description: z.string().max(2000).optional(),
-    status: z.enum(['ACTIVE', 'PAUSED', 'SOLD']).optional(),
-    insuranceEstimate: z.number().int().min(0).optional(),
-    maintenanceEstimate: z.number().int().min(0).optional(),
-  })
+  let raw: unknown
+  try {
+    raw = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'גוף בקשה לא תקין' }, { status: 400 })
+  }
 
-  const data = updateSchema.parse(body)
+  try {
+    if (isQuickStatusOnly(raw)) {
+      const { status } = quickStatusSchema.parse(raw)
+      const updated = await prisma.carListing.update({
+        where: { id: params.id },
+        data: { status },
+        include: { images: true },
+      })
+      return NextResponse.json({ data: updated })
+    }
 
-  const updated = await prisma.carListing.update({
-    where: { id: params.id },
-    data,
-    include: { images: true },
-  })
+    const data = patchBodySchema.parse(raw)
 
-  return NextResponse.json({ data: updated })
+    let finalImagePaths: string[] | undefined
+    if (data.images) {
+      try {
+        finalImagePaths = await replaceListingOrderedImages(params.id, user.id, data.images.map((i) => i.path))
+      } catch (e) {
+        console.error('[listings PATCH] images', e)
+        return NextResponse.json(
+          { error: 'עדכון תמונות נכשל — ודא שהתמונות תקינות ונסה שוב' },
+          { status: 400 },
+        )
+      }
+    }
+
+    const dataKeys = Object.keys(data)
+    const needsRecompute = dataKeys.some((k) => RECOMPUTE_KEYS.has(k))
+
+    const merged = {
+      brand: data.brand ?? listing.brand,
+      model: data.model ?? listing.model,
+      year: data.year ?? listing.year,
+      mileage: data.mileage ?? listing.mileage,
+      price: data.price ?? listing.price,
+      location: data.location ?? listing.location,
+      fuelType: data.fuelType ?? listing.fuelType,
+      fuelConsumption: data.fuelConsumption ?? listing.fuelConsumption,
+      vehicleType: data.vehicleType ?? listing.vehicleType,
+      transmission: data.transmission ?? listing.transmission,
+      engineSize:
+        data.engineSize !== undefined
+          ? data.engineSize === null
+            ? undefined
+            : data.engineSize
+          : listing.engineSize ?? undefined,
+      color: data.color !== undefined ? data.color ?? undefined : listing.color ?? undefined,
+      doors: data.doors !== undefined ? data.doors ?? undefined : listing.doors ?? undefined,
+      seats: data.seats !== undefined ? data.seats ?? undefined : listing.seats ?? undefined,
+      insuranceEstimate: data.insuranceEstimate ?? listing.insuranceEstimate,
+      maintenanceEstimate: data.maintenanceEstimate ?? listing.maintenanceEstimate,
+      depreciationRate: data.depreciationRate ?? listing.depreciationRate,
+    }
+
+    const scalar: Prisma.CarListingUpdateInput = {}
+    if (data.brand !== undefined) scalar.brand = data.brand
+    if (data.model !== undefined) scalar.model = data.model
+    if (data.year !== undefined) scalar.year = data.year
+    if (data.mileage !== undefined) scalar.mileage = data.mileage
+    if (data.price !== undefined) scalar.price = data.price
+    if (data.location !== undefined) scalar.location = data.location
+    if (data.fuelType !== undefined) scalar.fuelType = data.fuelType
+    if (data.fuelConsumption !== undefined) scalar.fuelConsumption = data.fuelConsumption
+    if (data.vehicleType !== undefined) scalar.vehicleType = data.vehicleType
+    if (data.transmission !== undefined) scalar.transmission = data.transmission
+    if (data.engineSize !== undefined) {
+      scalar.engineSize = data.engineSize === null ? null : data.engineSize
+    }
+    if (data.color !== undefined) scalar.color = data.color
+    if (data.doors !== undefined) scalar.doors = data.doors
+    if (data.seats !== undefined) scalar.seats = data.seats
+    if (data.insuranceEstimate !== undefined) scalar.insuranceEstimate = data.insuranceEstimate
+    if (data.maintenanceEstimate !== undefined) scalar.maintenanceEstimate = data.maintenanceEstimate
+    if (data.depreciationRate !== undefined) scalar.depreciationRate = data.depreciationRate
+    if (data.description !== undefined) scalar.description = data.description
+    if (data.plateNumber !== undefined) scalar.plateNumber = data.plateNumber
+    if (data.isGovVerified !== undefined) {
+      scalar.isGovVerified = data.isGovVerified
+      scalar.govVerifiedAt = data.isGovVerified ? new Date() : null
+    }
+    if (data.status !== undefined) scalar.status = data.status
+    if (data.whySelling !== undefined) scalar.whySelling = data.whySelling
+    if (data.equipment !== undefined) scalar.equipmentJson = JSON.stringify(data.equipment)
+    if (data.listingMessagingMode !== undefined) {
+      scalar.listingMessagingMode = data.listingMessagingMode
+    }
+
+    if (needsRecompute) {
+      const marketAvg = estimateMarketPrice(merged.brand, merged.model, merged.year)
+      const priceVsMarket = computePriceVsMarket(merged.price, marketAvg)
+      const dealTag = classifyDeal(merged.price, marketAvg, true)
+      const costBreakdown = calculateCostBreakdown(merged as Parameters<typeof calculateCostBreakdown>[0])
+      scalar.marketAvgPrice = marketAvg
+      scalar.priceVsMarket = priceVsMarket
+      scalar.dealTag = dealTag ?? undefined
+      scalar.monthlyCost = costBreakdown.monthly
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.carListing.update({
+        where: { id: params.id },
+        data: scalar,
+      })
+      if (finalImagePaths) {
+        await tx.listingImage.deleteMany({ where: { listingId: params.id } })
+        await tx.listingImage.createMany({
+          data: finalImagePaths.map((path, order) => ({
+            listingId: params.id,
+            path,
+            order,
+            isPrimary: order === 0,
+          })),
+        })
+      }
+    })
+
+    const updated = await prisma.carListing.findUniqueOrThrow({
+      where: { id: params.id },
+      include: { images: { orderBy: { order: 'asc' } } },
+    })
+
+    syncListingToMarketData(updated.id).catch(() => {})
+
+    return NextResponse.json({ data: updated })
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return NextResponse.json({ error: err.errors[0]?.message ?? 'נתונים לא תקינים' }, { status: 400 })
+    }
+    console.error('[listings PATCH]', err)
+    return NextResponse.json({ error: 'שגיאה פנימית' }, { status: 500 })
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {

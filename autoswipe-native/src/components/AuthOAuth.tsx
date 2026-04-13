@@ -23,6 +23,20 @@ const GOOGLE_WEB =
 const GOOGLE_IOS = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || GOOGLE_WEB
 const GOOGLE_ANDROID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID?.trim() || GOOGLE_WEB
 
+/** Apple sends full name only on the first successful Sign in with Apple for this app+user. */
+function appleCredentialDisplayName(
+  fullName: AppleAuthentication.AppleAuthenticationFullName | null,
+): string | undefined {
+  if (!fullName) return undefined
+  const given = fullName.givenName?.trim() ?? ''
+  const family = fullName.familyName?.trim() ?? ''
+  const nick = fullName.nickname?.trim() ?? ''
+  const combined = [given, family].filter(Boolean).join(' ').trim()
+  if (combined.length > 0) return combined.slice(0, 80)
+  if (nick.length > 0) return nick.slice(0, 80)
+  return undefined
+}
+
 /** True when Expo has at least one client id for the current platform (WEB id counts for iOS/Android via fallback). */
 function isGoogleOAuthConfigured(): boolean {
   if (Platform.OS === 'ios') return Boolean(GOOGLE_IOS)
@@ -32,11 +46,14 @@ function isGoogleOAuthConfigured(): boolean {
 
 export type AuthOAuthFlow = 'login' | 'signup'
 
+export type OAuthSignedInPayload = { isOnboarded?: boolean; created: boolean }
+
 type Props = {
   flow: AuthOAuthFlow
   disabled?: boolean
   onError: (message: string) => void
-  onSignedIn: (user: { isOnboarded?: boolean }) => void
+  /** Server always find-or-creates: existing SSO/email → login; else new user → `created: true`. */
+  onSignedIn: (payload: OAuthSignedInPayload) => void
 }
 
 function GoogleOAuthButton({
@@ -87,9 +104,9 @@ function GoogleOAuthButton({
 
     void (async () => {
       try {
-        const { user } = await exchangeOAuthToken('google', idToken)
-        track(flow === 'signup' ? 'signup' : 'login', { method: 'google' })
-        onSignedInRef.current(user)
+        const { user, created } = await exchangeOAuthToken('google', idToken)
+        track(flow === 'signup' ? 'signup' : 'login', { method: 'google', created })
+        onSignedInRef.current({ ...user, created })
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'שגיאה בהתחברות עם Google'
         onErrorRef.current(msg)
@@ -177,9 +194,12 @@ function AppleOAuthButton({
       })
       const idToken = credential.identityToken
       if (!idToken) throw new Error('Apple לא החזיר אסימון')
-      const { user } = await exchangeOAuthToken('apple', idToken)
-      track(flow === 'signup' ? 'signup' : 'login', { method: 'apple' })
-      onSignedInRef.current(user)
+      const displayName = appleCredentialDisplayName(credential.fullName)
+      const { user, created } = await exchangeOAuthToken('apple', idToken, {
+        displayName,
+      })
+      track(flow === 'signup' ? 'signup' : 'login', { method: 'apple', created })
+      onSignedInRef.current({ ...user, created })
     } catch (e: unknown) {
       if (
         e &&

@@ -10,6 +10,12 @@ import { track } from '../../src/lib/analytics'
 import { getApiBaseUrl } from '../../src/lib/api-base-url'
 import { formatApiNetworkError, isConnectivityFailure } from '../../src/lib/network-errors'
 import { AuthOAuthRow } from '../../src/components/AuthOAuth'
+import { queryClient } from '../../src/lib/query-client'
+import { queryKeys } from '../../src/lib/query-keys'
+import {
+  USER_DISPLAY_NAME_TAKEN_CODE,
+  USER_DISPLAY_NAME_TAKEN_HE,
+} from '../../src/lib/user-display-name'
 
 const DRAFT_KEY = 'autoswipe_signup_draft'
 
@@ -41,6 +47,7 @@ export default function SignupScreen() {
 
   const [error, setError] = useState('')
   const [emailExists, setEmailExists] = useState(false)
+  const [nameTaken, setNameTaken] = useState(false)
   const [phoneError, setPhoneError] = useState('')
 
   const rules = getPasswordRules(password)
@@ -62,8 +69,9 @@ export default function SignupScreen() {
     setError('')
     setPhoneError('')
     setEmailExists(false)
+    setNameTaken(false)
 
-    if (!name.trim()) { setError('נא להזין שם מלא'); return }
+    if (!name.trim()) { setError('נא להזין שם תצוגה'); return }
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
       setError('נא להזין כתובת אימייל תקינה'); return
     }
@@ -103,7 +111,15 @@ export default function SignupScreen() {
       const data = await res.json()
 
       if (!res.ok) {
-        if (res.status === 409) { setEmailExists(true); return }
+        if (res.status === 409 && data.code === USER_DISPLAY_NAME_TAKEN_CODE) {
+          setNameTaken(true)
+          setError(typeof data.error === 'string' ? data.error : USER_DISPLAY_NAME_TAKEN_HE)
+          return
+        }
+        if (res.status === 409) {
+          setEmailExists(true)
+          return
+        }
         if (res.status === 429) throw new Error('יותר מדי ניסיונות. נסה שוב בעוד 15 דקות.')
         throw new Error(data.error || data.message || 'שגיאה בהרשמה')
       }
@@ -145,8 +161,9 @@ export default function SignupScreen() {
           flow="signup"
           disabled={submitting}
           onError={setError}
-          onSignedIn={(user) => {
-            if (user.isOnboarded === false) {
+          onSignedIn={(payload) => {
+            queryClient.removeQueries({ queryKey: queryKeys.me() })
+            if (payload.isOnboarded === false) {
               router.replace('/(onboarding)')
             } else {
               router.replace('/(tabs)/swipe')
@@ -161,14 +178,16 @@ export default function SignupScreen() {
         </View>
 
         <View style={{ gap: 12 }}>
-          {/* Name */}
+          <Text style={{ color: '#888888', fontSize: 12, textAlign: 'right', marginBottom: -4 }}>
+            שם תצוגה ייחודי — כך תופיע באפליקציה (אפשר לשנות אחר כך)
+          </Text>
           <TextInput
             value={name}
-            onChangeText={(t) => { setName(t); setError('') }}
-            placeholder="שם מלא"
+            onChangeText={(t) => { setName(t); setError(''); setNameTaken(false) }}
+            placeholder="למשל: יוסי כהן"
             placeholderTextColor="#555"
             textAlign="right"
-            style={styles.input}
+            style={[styles.input, nameTaken && styles.inputError]}
           />
 
           {/* Email */}
@@ -277,7 +296,9 @@ export default function SignupScreen() {
             </View>
           )}
 
-          {!!error && !emailExists && <Text style={styles.errorText}>{error}</Text>}
+          {!!error && !emailExists && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
 
           <TouchableOpacity
             onPress={handleSignup}

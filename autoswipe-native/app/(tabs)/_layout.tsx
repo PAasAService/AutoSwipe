@@ -68,13 +68,13 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
       }}
     >
-      {/* ── Visible tabs — left to right on screen (RTL: גילוי … הגדרות) ── */}
+      {/* ── Visible tabs — order in bar (RTL mirrors visually): הגדרות … גילוי ── */}
 
       <Tabs.Screen
-        name="explore"
+        name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔍" label="גילוי" focused={focused} />
+            <TabIcon emoji="⚙️" label="הגדרות" focused={focused} />
           ),
         }}
       />
@@ -107,10 +107,10 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="settings"
+        name="explore"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="⚙️" label="הגדרות" focused={focused} />
+            <TabIcon emoji="🔍" label="גילוי" focused={focused} />
           ),
         }}
       />

@@ -8,8 +8,10 @@ import {
   Dimensions,
   Share,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { goBackSafe } from '../../src/lib/go-back-safe'
+import { BackOverlayCircle } from '../../src/components/ui/BackHeaderButton'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
@@ -32,6 +34,7 @@ function formatHand(hand: number): string {
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const { data: me } = useCurrentUser()
   const { data: favorites } = useFavorites()
   const toggleFavorite = useToggleFavorite()
@@ -115,17 +118,21 @@ export default function ListingDetailScreen() {
             )}
           </ScrollView>
 
-          {/* Back button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              position: 'absolute', top: 16, left: 16,
-              backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
-              width: 40, height: 40, justifyContent: 'center', alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#F5F5F5', fontSize: 18 }}>←</Text>
-          </TouchableOpacity>
+          <BackOverlayCircle onPress={() => goBackSafe()} />
+
+          {isSeller && listing.status !== 'DELETED' && (
+            <TouchableOpacity
+              onPress={() => router.push(`/listing/create?editId=${listing.id}`)}
+              accessibilityLabel="ערוך מודעה"
+              style={{
+                position: 'absolute', top: insets.top + 8, end: 16,
+                backgroundColor: 'rgba(212,168,67,0.95)', borderRadius: 20,
+                paddingHorizontal: 14, paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: '#0F0F0F', fontSize: 14, fontWeight: '800' }}>✎ ערוך</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Image counter */}
           {listing.images.length > 1 && (

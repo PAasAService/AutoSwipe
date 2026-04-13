@@ -8,6 +8,10 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
+import { useReturnTo } from '../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../src/constants/layout'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../src/lib/api'
 import type { NotificationItem } from '../../src/hooks/useNotificationsPreview'
@@ -36,6 +40,7 @@ function formatTime(iso: string) {
 
 export default function NotificationsInboxScreen() {
   const router = useRouter()
+  const returnTo = useReturnTo()
   const queryClient = useQueryClient()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
@@ -69,24 +74,14 @@ export default function NotificationsInboxScreen() {
   const items = data?.pages.flatMap((p) => p.items) ?? []
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['top']}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: 'rgba(255,255,255,0.08)',
-        }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: '#D4A843', fontSize: 16 }}>סגור</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#F5F5F5', fontSize: 18, fontWeight: '700' }}>כל ההתראות</Text>
-        <View style={{ width: 48 }} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/settings')}
+        backVariant="text"
+        backLabel="סגור"
+        title="כל ההתראות"
+        titleSize={18}
+      />
 
       {isLoading && (
         <View style={{ paddingTop: 48, alignItems: 'center' }}>
@@ -105,7 +100,7 @@ export default function NotificationsInboxScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ padding: SCREEN_EDGE, paddingBottom: 32 }}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) fetchNextPage()
           }}

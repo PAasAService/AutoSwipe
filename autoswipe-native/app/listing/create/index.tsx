@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
+import { goBackSafe } from '../../../src/lib/go-back-safe'
 import { useQueryClient } from '@tanstack/react-query'
 import Toast from 'react-native-toast-message'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { api, uploadListingImageFromUri, deletePendingListingImage } from '../../../src/lib/api'
+import { listingImageUri } from '../../../src/lib/listing-image-uri'
+import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
+import type { CarListing } from '../../../src/types'
 import {
   CAR_BRANDS, FUEL_TYPES, VEHICLE_TYPES,
   FUEL_TYPE_LABELS, VEHICLE_TYPE_LABELS, TRANSMISSION_LABELS,
@@ -18,6 +22,9 @@ import {
 import { ISRAELI_CITIES } from '../../../src/constants/cities'
 import { FuelType, VehicleType, Transmission } from '../../../src/types'
 import { formatILS } from '../../../src/lib/utils/format'
+import { FORWARD_ICON, BACK_WITH_LABEL_FONT_SIZE } from '../../../src/constants/ui'
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../../src/constants/layout'
 
 const STEPS = ['רכב', 'פרטים', 'מחיר', 'עלויות', 'תמונות']
 const CURRENT_YEAR = new Date().getFullYear()
@@ -42,8 +49,17 @@ interface UploadedImage { uri: string; path?: string; uploading: boolean; error?
 export default function CreateListingScreen() {
   const router = useRouter()
   const qc = useQueryClient()
+  const { data: me, isLoading: meLoading } = useCurrentUser()
+  const rawEditId = useLocalSearchParams<{ editId?: string | string[] }>().editId
+  const editId = useMemo(
+    () => (Array.isArray(rawEditId) ? rawEditId[0] : rawEditId) ?? '',
+    [rawEditId],
+  )
+  const isEdit = editId.length > 0
+
   const [step, setStep] = useState(0)
   const [publishing, setPublishing] = useState(false)
+  const [editReady, setEditReady] = useState(!isEdit)
   const [plateLoading, setPlateLoading] = useState(false)
   const [aiDescLoading, setAiDescLoading] = useState(false)
   const [images, setImages] = useState<UploadedImage[]>([])
@@ -60,8 +76,9 @@ export default function CreateListingScreen() {
     messagingMode: 'OPEN',
   })
 
-  // Restore draft on mount
+  // Restore draft on mount (create only)
   useEffect(() => {
+    if (isEdit) return
     AsyncStorage.getItem(DRAFT_KEY).then((raw) => {
       if (!raw) return
       try {
@@ -69,12 +86,94 @@ export default function CreateListingScreen() {
         setForm((f) => ({ ...f, ...saved }))
       } catch { /* ignore corrupt draft */ }
     })
-  }, [])
+  }, [isEdit])
 
-  // Auto-save draft on every form change
+  // Auto-save draft on every form change (create only)
   useEffect(() => {
+    if (isEdit) return
     AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(form))
-  }, [form])
+  }, [form, isEdit])
+
+  // Load listing when editing
+  useEffect(() => {
+    if (!isEdit || !editId) {
+      setEditReady(true)
+      return
+    }
+    if (meLoading) return
+    if (!me?.id) {
+      Toast.show({ type: 'error', text1: 'יש להתחבר מחדש' })
+      goBackSafe('/(tabs)/dashboard')
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await api.get<{ data: CarListing }>(`/api/listings/${editId}`)
+        const L = res.data
+        if (cancelled) return
+        if (L.sellerId !== me.id) {
+          Toast.show({ type: 'error', text1: 'אין הרשאה לערוך מודעה זו' })
+          goBackSafe('/(tabs)/dashboard')
+          return
+        }
+
+        let equipment: string[] = []
+        try {
+          if (L.equipmentJson) equipment = JSON.parse(L.equipmentJson) as string[]
+        } catch { /* ignore */ }
+
+        const why = L.whySelling ?? ''
+
+        setForm({
+          brand: L.brand,
+          model: L.model,
+          year: String(L.year),
+          fuelType: L.fuelType || '',
+          vehicleType: L.vehicleType || '',
+          transmission: L.transmission || '',
+          engineSize: L.engineSize != null ? String(L.engineSize) : '',
+          color: L.color ?? '',
+          mileage: String(L.mileage),
+          doors: String(L.doors ?? 4),
+          seats: String(L.seats ?? 5),
+          price: String(L.price),
+          location: L.location,
+          insuranceEstimate: String(L.insuranceEstimate),
+          maintenanceEstimate: String(L.maintenanceEstimate),
+          depreciationRate: String(Math.round(L.depreciationRate * 100)),
+          fuelConsumption: String(L.fuelConsumption),
+          description: L.description ?? '',
+          sellerReason: why,
+          equipment,
+          plateNumber: L.plateNumber ?? '',
+          isGovVerified: !!L.isGovVerified,
+          messagingMode: L.listingMessagingMode || L.messagingMode || 'OPEN',
+        })
+
+        const ordered = [...(L.images ?? [])].sort((a, b) => a.order - b.order)
+        setImages(
+          ordered.map((img) => ({
+            uri: listingImageUri(img.path),
+            path: img.path,
+            uploading: false,
+          })),
+        )
+        setEditReady(true)
+      } catch {
+        if (!cancelled) {
+          setEditReady(true)
+          Toast.show({ type: 'error', text1: 'לא ניתן לטעון את המודעה' })
+          goBackSafe('/(tabs)/dashboard')
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isEdit, editId, me?.id, meLoading, router])
 
   function set(key: keyof FormData, val: any) {
     setForm((f) => ({ ...f, [key]: val }))
@@ -176,7 +275,7 @@ export default function CreateListingScreen() {
   function removeImage(idx: number) {
     setImages((prev) => {
       const img = prev[idx]
-      if (img?.path) {
+      if (img?.path?.includes('/uploads/listings/pending/')) {
         deletePendingListingImage(img.path).catch(() => {})
       }
       return prev.filter((_, i) => i !== idx)
@@ -195,7 +294,7 @@ export default function CreateListingScreen() {
 
     setPublishing(true)
     try {
-      await api.post('/api/listings', {
+      const payload = {
         brand: form.brand, model: form.model,
         year: parseInt(form.year) || CURRENT_YEAR,
         mileage: parseInt(form.mileage),
@@ -213,16 +312,27 @@ export default function CreateListingScreen() {
         maintenanceEstimate: parseInt(form.maintenanceEstimate) || 3000,
         depreciationRate: parseInt(form.depreciationRate) / 100 || 0.12,
         description: form.description || undefined,
-        sellerReason: form.sellerReason || undefined,
+        whySelling: form.sellerReason || undefined,
         equipment: form.equipment.length > 0 ? form.equipment : undefined,
-        messagingMode: form.messagingMode,
+        listingMessagingMode: form.messagingMode,
         plateNumber: form.plateNumber || undefined,
         isGovVerified: form.isGovVerified,
         images: images.filter((i) => i.path).map((i) => ({ path: i.path! })),
-      })
+      }
+      if (isEdit) {
+        await api.patch(`/api/listings/${editId}`, payload)
+        Toast.show({ type: 'success', text1: 'המודעה עודכנה', visibilityTime: 2500 })
+      } else {
+        const { whySelling: _w, listingMessagingMode: _m, equipment: _e, ...createBody } = payload
+        await api.post('/api/listings', {
+          ...createBody,
+          sellerReason: form.sellerReason || undefined,
+          messagingMode: form.messagingMode,
+        })
+        await AsyncStorage.removeItem(DRAFT_KEY)
+        Toast.show({ type: 'success', text1: 'המודעה פורסמה! 🎉', visibilityTime: 2500 })
+      }
       qc.invalidateQueries({ queryKey: ['my-listings'] })
-      await AsyncStorage.removeItem(DRAFT_KEY)
-      Toast.show({ type: 'success', text1: 'המודעה פורסמה! 🎉', visibilityTime: 2500 })
       router.replace('/(tabs)/dashboard')
     } catch (err: any) {
       Toast.show({ type: 'error', text1: err.message || 'שגיאה בפרסום' })
@@ -233,20 +343,33 @@ export default function CreateListingScreen() {
 
   const canPublish = !publishing && images.length > 0 && !images.some((i) => i.uploading)
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 }}>
-          <TouchableOpacity onPress={() => step > 0 ? setStep(step - 1) : router.back()}>
-            <Text style={{ color: '#D4A843', fontSize: 16 }}>{step > 0 ? '→ חזור' : 'סגור'}</Text>
-          </TouchableOpacity>
-          <Text style={{ color: '#F5F5F5', fontSize: 18, fontWeight: '700' }}>פרסום רכב</Text>
-          <Text style={{ color: '#888', fontSize: 14 }}>{step + 1}/{STEPS.length}</Text>
-        </View>
+  if (isEdit && !editReady) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#D4A843" />
+        <Text style={{ color: '#888', marginTop: 16, fontSize: 15 }}>טוען מודעה…</Text>
+      </SafeAreaView>
+    )
+  }
 
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => (step > 0 ? setStep(step - 1) : goBackSafe('/(tabs)/dashboard'))}
+        backVariant={step > 0 ? 'labeled' : 'text'}
+        backLabel={step > 0 ? 'חזור' : 'סגור'}
+        title={isEdit ? 'עריכת מודעה' : 'פרסום רכב'}
+        titleSize={18}
+        sideSlotWidth={72}
+        trailing={(
+          <Text style={{ color: '#888', fontSize: 14, writingDirection: 'rtl' }}>
+            {step + 1}/{STEPS.length}
+          </Text>
+        )}
+      />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         {/* Progress */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 6, marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: SCREEN_EDGE, gap: 6, marginBottom: 8, marginTop: 4 }}>
           {STEPS.map((_, i) => (
             <View key={i} style={{ flex: 1, height: 3, borderRadius: 2, backgroundColor: i <= step ? '#D4A843' : '#333' }} />
           ))}
@@ -256,7 +379,7 @@ export default function CreateListingScreen() {
           {STEPS[step]}
         </Text>
 
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ padding: SCREEN_EDGE, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
           {step === 0 && <StepVehicle form={form} set={set} plateLoading={plateLoading} onLookup={lookupPlate} />}
           {step === 1 && <StepDetails form={form} set={set} />}
           {step === 2 && <StepPrice form={form} set={set} />}
@@ -275,14 +398,14 @@ export default function CreateListingScreen() {
         <View style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           backgroundColor: '#0F0F0F', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
-          padding: 16, paddingBottom: 28,
+          paddingHorizontal: SCREEN_EDGE, paddingTop: 16, paddingBottom: 28,
         }}>
           {step < STEPS.length - 1 ? (
             <TouchableOpacity
               onPress={() => setStep(step + 1)}
               style={{ backgroundColor: '#D4A843', borderRadius: 14, padding: 16, alignItems: 'center' }}
             >
-              <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 16 }}>הבא ←</Text>
+              <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: BACK_WITH_LABEL_FONT_SIZE }}>{`הבא ${FORWARD_ICON}`}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -294,7 +417,7 @@ export default function CreateListingScreen() {
             >
               {publishing
                 ? <ActivityIndicator color="#0F0F0F" />
-                : <Text style={{ color: canPublish ? '#0F0F0F' : '#666', fontWeight: '700', fontSize: 16 }}>פרסם רכב 🚗</Text>
+                : <Text style={{ color: canPublish ? '#0F0F0F' : '#666', fontWeight: '700', fontSize: 16 }}>{isEdit ? 'שמור שינויים ✓' : 'פרסם רכב 🚗'}</Text>
               }
             </TouchableOpacity>
           )}

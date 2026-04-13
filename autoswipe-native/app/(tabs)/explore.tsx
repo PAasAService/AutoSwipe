@@ -13,6 +13,8 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { hrefWithReturn } from '../../src/lib/go-back-safe'
+import { HEADER_DISMISS_FONT_SIZE } from '../../src/constants/ui'
 import { useRecommendations } from '../../src/hooks/useRecommendations'
 import { useFavorites, useToggleFavorite } from '../../src/hooks/useFavorites'
 import { FeedListing, FuelType, VehicleType } from '../../src/types'
@@ -350,7 +352,7 @@ export default function ExploreScreen() {
                   לא נמצאו רכבים כרגע
                 </Text>
                 <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/settings/preferences')}
+                  onPress={() => router.push(hrefWithReturn('/(tabs)/settings/preferences', 'explore'))}
                   style={{ backgroundColor: '#D4A843', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
                 >
                   <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>⚙️ עדכן העדפות</Text>
@@ -405,7 +407,7 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
                 <Text style={{ color: '#F5F5F5', fontSize: 17, fontWeight: '800' }}>סינון רכבים</Text>
                 <TouchableOpacity onPress={() => setShowFilter(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Text style={{ color: '#D4A843', fontSize: 14, fontWeight: '600' }}>סגור</Text>
+                  <Text style={{ color: '#D4A843', fontSize: HEADER_DISMISS_FONT_SIZE, fontWeight: '600' }}>סגור</Text>
                 </TouchableOpacity>
               </View>
 

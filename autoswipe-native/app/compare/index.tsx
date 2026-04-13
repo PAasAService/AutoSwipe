@@ -1,6 +1,8 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Dimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
+import { useReturnTo } from '../../src/hooks/useReturnTo'
 import { useQueries } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
@@ -9,13 +11,33 @@ import { CarListing } from '../../src/types'
 import { formatILS, formatMileage } from '../../src/lib/utils/format'
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from '../../src/constants/cars'
 import { calculateCostBreakdown } from '../../src/lib/utils/cost-calculator'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../src/constants/layout'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
+function parseCompareIds(
+  params: Record<string, string | string[] | undefined>,
+): string[] {
+  const raw = params.ids
+  const str = Array.isArray(raw) ? raw[0] : raw
+  if (!str || typeof str !== 'string') return []
+  try {
+    return decodeURIComponent(str)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  } catch {
+    return str.split(',').map((s) => s.trim()).filter(Boolean)
+  }
+}
+
 export default function CompareScreen() {
   const router = useRouter()
-  const { ids } = useLocalSearchParams<{ ids: string }>()
-  const idList = ids?.split(',') ?? []
+  const returnTo = useReturnTo()
+  const idList = parseCompareIds(
+    useLocalSearchParams() as Record<string, string | string[] | undefined>,
+  )
 
   const results = useQueries({
     queries: idList.map((id) => ({
@@ -29,21 +51,67 @@ export default function CompareScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#D4A843" />
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/favorites')}
+          title="השוואת רכבים ⚖️"
+          titleSize={22}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#D4A843" />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
+  if (idList.length < 2) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/favorites')}
+          backVariant="labeled"
+          backLabel="חזור"
+          backColor="#888888"
+          title="השוואת מחירים"
+          titleSize={20}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ color: '#888888', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 22, writingDirection: 'rtl' }}>
+            בחר לפחות שני רכבים במסך המועדפים, סמן אותם עם ״השווה״ ולחץ על ״השווה X רכבים״ בתחתית.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/favorites')}
+            style={{ backgroundColor: '#D4A843', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, marginBottom: 10 }}
+          >
+            <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>למועדפים</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     )
   }
 
   if (listings.length < 2) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <Text style={{ color: '#F5F5F5', fontSize: 18, textAlign: 'center', marginBottom: 20 }}>
-          בחר לפחות שני רכבים להשוואה
-        </Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ backgroundColor: '#D4A843', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}>
-          <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>חזור למועדפים</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/favorites')}
+          backVariant="labeled"
+          backLabel="חזור"
+          backColor="#888888"
+          title="לא ניתן להשוות"
+          titleSize={20}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ color: '#888888', fontSize: 14, textAlign: 'center', marginBottom: 24, lineHeight: 22, writingDirection: 'rtl' }}>
+            לא הצלחנו לטעון את כל הרכבים מהמודעות שבחרת. ייתכן שהמודעה הוסרה או שאין חיבור לשרת.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/favorites')}
+            style={{ backgroundColor: '#D4A843', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, marginBottom: 10 }}
+          >
+            <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>למועדפים</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     )
   }
@@ -142,20 +210,16 @@ export default function CompareScreen() {
   const mileageDiff = listings.length === 2 ? Math.abs(listings[0].mileage - listings[1].mileage) : 0
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#F5F5F5', fontSize: 22, fontWeight: '700', flex: 1, textAlign: 'right' }}>
-          השוואת רכבים ⚖️
-        </Text>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/favorites')}
+        title="השוואת רכבים ⚖️"
+        titleSize={22}
+      />
 
       <ScrollView>
         {/* Car headers */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 4, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: SCREEN_EDGE, gap: 4, marginBottom: 12 }}>
           <View style={{ width: colWidth }} />
           {listings.map((car, i) => (
             <View key={car.id} style={{ width: colWidth, alignItems: 'center', gap: 4 }}>
@@ -185,7 +249,7 @@ export default function CompareScreen() {
         {rows.map((row, i) => (
           <View key={row.label} style={{
             flexDirection: 'row',
-            paddingHorizontal: 16, paddingVertical: 10, gap: 4,
+            paddingHorizontal: SCREEN_EDGE, paddingVertical: 10, gap: 4,
             backgroundColor: i % 2 === 0 ? '#1A1A1A' : '#0F0F0F',
           }}>
             <View style={{ width: colWidth, justifyContent: 'center' }}>
@@ -214,7 +278,9 @@ export default function CompareScreen() {
 
         {/* Verdict card */}
         <View style={{
-          margin: 16, backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20,
+          marginHorizontal: SCREEN_EDGE,
+          marginVertical: 16,
+          backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20,
           borderWidth: 2, borderColor: 'rgba(212,168,67,0.4)',
         }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>

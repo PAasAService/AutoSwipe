@@ -9,6 +9,8 @@ import { track } from '../../src/lib/analytics'
 import { getApiBaseUrl } from '../../src/lib/api-base-url'
 import { formatApiNetworkError, isConnectivityFailure } from '../../src/lib/network-errors'
 import { AuthOAuthRow } from '../../src/components/AuthOAuth'
+import { queryClient } from '../../src/lib/query-client'
+import { queryKeys } from '../../src/lib/query-keys'
 
 export default function LoginScreen() {
   const router = useRouter()
@@ -32,6 +34,7 @@ export default function LoginScreen() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'שגיאה בהתחברות')
       await setToken(data.token)
+      queryClient.removeQueries({ queryKey: queryKeys.me() })
       track('login', { method: 'email' })
       if (data.user?.isOnboarded === false) {
         router.replace('/(onboarding)')
@@ -49,8 +52,10 @@ export default function LoginScreen() {
     }
   }
 
-  function handleOAuthSignedIn(user: { isOnboarded?: boolean }) {
-    if (user.isOnboarded === false) {
+  /** SSO: server POST /api/auth/oauth finds user by Apple/Google id or email, or creates one, then returns JWT. */
+  function handleOAuthSignedIn(payload: { isOnboarded?: boolean; created: boolean }) {
+    queryClient.removeQueries({ queryKey: queryKeys.me() })
+    if (payload.isOnboarded === false) {
       router.replace('/(onboarding)')
     } else {
       router.replace('/(tabs)/swipe')

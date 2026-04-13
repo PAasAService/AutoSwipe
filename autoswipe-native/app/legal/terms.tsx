@@ -1,35 +1,23 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
+import { useReturnTo } from '../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../src/constants/layout'
 
 export default function TermsScreen() {
-  const router = useRouter()
-
+  const returnTo = useReturnTo()
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.08)',
-      }}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          accessibilityLabel="חזור"
-          style={{ padding: 4 }}
-        >
-          <Text style={{ color: '#D4A843', fontSize: 18 }}>‹ חזור</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#F5F5F5', fontSize: 18, fontWeight: '700' }}>תנאי שימוש</Text>
-        <View style={{ width: 60 }} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/settings')}
+        backVariant="labeled"
+        title="תנאי שימוש"
+        titleSize={20}
+      />
 
       <ScrollView
-        contentContainerStyle={{ padding: 20 }}
+        contentContainerStyle={{ padding: SCREEN_EDGE }}
         showsVerticalScrollIndicator={false}
       >
         <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right', marginBottom: 24 }}>

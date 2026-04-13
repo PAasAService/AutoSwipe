@@ -55,6 +55,8 @@ export interface CarListing {
   dealTag?: DealTag
   matchScore?: number
   description?: string
+  whySelling?: string | null
+  equipmentJson?: string
   status: ListingStatus
   plateNumber?: string
   isGovVerified: boolean
@@ -69,6 +71,8 @@ export interface CarListing {
   currentOwnershipType?: string
   previousOwnershipType?: string
   messagingMode?: 'OPEN' | 'SELLER_FIRST'
+  /** Per-listing override; null = use account default */
+  listingMessagingMode?: 'OPEN' | 'SELLER_FIRST' | null
   buyerMessageLimit?: number
   viewCount: number
   likeCount: number

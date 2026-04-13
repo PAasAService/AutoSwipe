@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { MoreHorizontal, Trash2, Pause, Play, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
+import { MoreHorizontal, Trash2, Pause, Play, CheckCircle, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -79,6 +80,15 @@ export function ListingActions({ listingId, currentStatus, title }: Props) {
       {/* Dropdown menu */}
       {open && !showConfirm && (
         <div className="absolute left-0 top-12 z-50 min-w-[180px] bg-surface-container border border-outline-variant/20 rounded-2xl shadow-xl overflow-hidden">
+          <Link
+            href={`/listing/${listingId}/edit`}
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-highest text-right"
+          >
+            <Pencil className="w-4 h-4 text-primary" />
+            <span>ערוך מודעה</span>
+          </Link>
+          <hr className="border-outline-variant/20" />
           {currentStatus === 'ACTIVE' && (
             <button
               onClick={() => { patchStatus('PAUSED'); setOpen(false) }}

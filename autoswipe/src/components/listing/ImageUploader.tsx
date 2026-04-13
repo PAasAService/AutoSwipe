@@ -36,7 +36,8 @@ type ItemStatus = 'pending' | 'uploading' | 'done' | 'error'
 
 interface ImageItem {
   id:         string
-  file:       File
+  /** Absent for server-seeded listing images (edit flow). */
+  file?:      File
   previewUrl: string
   status:     ItemStatus
   progress:   number        // 0–100
@@ -64,14 +65,37 @@ interface Props {
   onChange:       (images: UploadedImage[]) => void
   onBusyChange?:  (uploading: boolean) => void
   maxImages?:     number
+  /** When set with `seedKey`, hydrates done items (e.g. existing listing photos). */
+  initialImages?: { path: string }[]
+  /** Change to re-apply `initialImages` (e.g. listing id). */
+  seedKey?:       string
 }
 
-export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) {
+export function ImageUploader({
+  onChange,
+  onBusyChange,
+  maxImages = 6,
+  initialImages,
+  seedKey,
+}: Props) {
   const [items, setItems]     = useState<ImageItem[]>([])
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const itemsRef     = useRef<ImageItem[]>(items)
   itemsRef.current   = items
+
+  useEffect(() => {
+    if (!seedKey || !initialImages?.length) return
+    setItems(
+      initialImages.map((img) => ({
+        id: uid(),
+        previewUrl: img.path,
+        status: 'done',
+        progress: 100,
+        storagePath: img.path,
+      })),
+    )
+  }, [seedKey, initialImages])
 
   // Notify parent of done-list (order preserved)
   useEffect(() => {
@@ -99,6 +123,7 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
   // ── Upload one file ───────────────────────────────────────────────────────
 
   const uploadOne = useCallback(async (item: ImageItem) => {
+    if (!item.file) return
     const formData = new FormData()
     formData.append('file', item.file)
 
@@ -219,7 +244,7 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
 
       item.xhr?.abort()
 
-      if (item.storagePath) {
+      if (item.storagePath?.includes('/uploads/listings/pending/')) {
         fetch(`/api/upload?path=${encodeURIComponent(item.storagePath)}`, { method: 'DELETE' }).catch(() => {})
       }
 
@@ -255,7 +280,12 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
         const reset = prev.map((it) =>
           it.id === id ? { ...it, status: 'uploading' as ItemStatus, progress: 0, error: undefined, storagePath: undefined } : it
         )
-        setTimeout(() => uploadOne({ ...item, status: 'uploading', progress: 0, error: undefined, storagePath: undefined }), 0)
+        if (item.file) {
+          setTimeout(
+            () => uploadOne({ ...item, status: 'uploading', progress: 0, error: undefined, storagePath: undefined }),
+            0,
+          )
+        }
         return reset
       })
     },

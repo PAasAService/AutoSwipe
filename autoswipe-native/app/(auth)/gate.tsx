@@ -3,13 +3,16 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { AuthOAuthRow } from '../../src/components/AuthOAuth'
+import { queryClient } from '../../src/lib/query-client'
+import { queryKeys } from '../../src/lib/query-keys'
 
 export default function GateScreen() {
   const router = useRouter()
   const [oauthError, setOauthError] = useState('')
 
-  function handleOAuthSignedIn(user: { isOnboarded?: boolean }) {
-    if (user.isOnboarded === false) {
+  function handleOAuthSignedIn(payload: { isOnboarded?: boolean; created: boolean }) {
+    queryClient.removeQueries({ queryKey: queryKeys.me() })
+    if (payload.isOnboarded === false) {
       router.replace('/(onboarding)')
     } else {
       router.replace('/(tabs)/swipe')

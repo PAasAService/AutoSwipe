@@ -8,6 +8,7 @@ import { Eye, EyeOff, ArrowRight, Car, ShoppingBag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { clsx } from 'clsx'
 import type { UserRole } from '@/types'
+import { USER_DISPLAY_NAME_TAKEN_CODE, USER_DISPLAY_NAME_TAKEN_HE } from '@/lib/user-display-name'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -27,7 +28,7 @@ export default function SignupPage() {
 
   const validate = () => {
     const errs: Record<string, string> = {}
-    if (name.trim().length < 2) errs.name = 'שם חייב להכיל לפחות 2 תווים'
+    if (name.trim().length < 2) errs.name = 'שם תצוגה חייב להכיל לפחות 2 תווים'
     if (!email.includes('@')) errs.email = 'כתובת מייל לא תקינה'
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) errs.password = 'הסיסמה חייבת להכיל לפחות 8 תווים, אות גדולה ומספר'
     if (roles.length === 0) errs.roles = 'יש לבחור לפחות תפקיד אחד'
@@ -49,6 +50,10 @@ export default function SignupPage() {
 
       const data = await res.json()
       if (!res.ok) {
+        if (res.status === 409 && data.code === USER_DISPLAY_NAME_TAKEN_CODE) {
+          setErrors((prev) => ({ ...prev, name: USER_DISPLAY_NAME_TAKEN_HE }))
+          return
+        }
         if (res.status === 409) {
           toast.error(
             <span>
@@ -139,15 +144,18 @@ export default function SignupPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full name */}
+          {/* Display name (unique in app) */}
           <div>
             <label className="text-on-surface-variant text-sm font-medium mb-2 block text-right">
-              שם מלא
+              שם תצוגה (ייחודי)
             </label>
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                setErrors((prev) => ({ ...prev, name: undefined }))
+              }}
               placeholder="ישראל ישראלי"
               autoComplete="name"
               className="w-full bg-surface-container rounded-2xl px-4 py-3.5 text-on-surface placeholder:text-on-surface-variant/50 border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 text-right text-sm transition-all"

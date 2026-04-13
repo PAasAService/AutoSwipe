@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, ActivityIndicator,
-  Alert, Modal, ScrollView,
+  Alert, Modal, ScrollView, I18nManager,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../../src/lib/go-back-safe'
+import { useReturnTo } from '../../../src/hooks/useReturnTo'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import Toast from 'react-native-toast-message'
@@ -12,14 +14,18 @@ import { api } from '../../../src/lib/api'
 import { listingImageUri } from '../../../src/lib/listing-image-uri'
 import { CarListing } from '../../../src/types'
 import { formatILS } from '../../../src/lib/utils/format'
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../../src/constants/layout'
 
 export default function DashboardScreen() {
   const router = useRouter()
+  const returnTo = useReturnTo()
   const qc = useQueryClient()
 
   const { data: listings, isLoading } = useQuery({
     queryKey: ['my-listings'],
-    queryFn: () => api.get<{ data: CarListing[] }>('/api/listings?mine=true').then((r) => r.data ?? (r as any)),
+    queryFn: () =>
+      api.get<{ data: CarListing[] }>('/api/users/me/listings').then((r) => r.data ?? (r as any)),
   })
 
   const patchListing = useMutation({
@@ -59,12 +65,12 @@ export default function DashboardScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
-          </TouchableOpacity>
-        </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo)}
+          title="מודעות שלי 🚗"
+          titleSize={22}
+        />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#D4A843" />
         </View>
@@ -73,28 +79,27 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo)}
+        title="מודעות שלי 🚗"
+        titleSize={22}
+        sideSlotWidth={128}
+        trailing={(
           <TouchableOpacity
             onPress={() => router.push('/listing/create/')}
-            style={{ backgroundColor: '#D4A843', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 }}
+            style={{ backgroundColor: '#D4A843', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
           >
-            <Text style={{ color: '#0F0F0F', fontWeight: '700' }}>+ מודעה חדשה</Text>
+            <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 13 }} numberOfLines={1}>
+              + מודעה חדשה
+            </Text>
           </TouchableOpacity>
-        </View>
-        <Text style={{ fontSize: 22, fontWeight: '800', color: '#F5F5F5', textAlign: 'right' }}>
-          מודעות שלי 🚗
-        </Text>
-      </View>
+        )}
+      />
 
       <ScrollView>
         {/* Stats Grid */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: SCREEN_EDGE, gap: 10 }}>
           <StatCard icon="👁" label="צפיות" value={String(totalViews)} />
           <StatCard icon="❤️" label="לייקים" value={String(totalLikes)} />
           <StatCard icon="🚗" label="פעילות" value={String(activeListings.length)} />
@@ -102,7 +107,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* Listings */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
+        <View style={{ paddingHorizontal: SCREEN_EDGE, paddingBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <TouchableOpacity onPress={() => router.push('/listing/create/')}>
               <Text style={{ color: '#D4A843', fontSize: 14, fontWeight: '600' }}>הוסף +</Text>
@@ -135,6 +140,7 @@ export default function DashboardScreen() {
                   car={item}
                   featured={idx === 0}
                   onView={() => router.push(`/listing/${item.id}`)}
+                  onEdit={() => router.push(`/listing/create?editId=${item.id}`)}
                   onPatch={(status) => patchListing.mutate({ id: item.id, status })}
                   onDelete={() => confirmDelete(item.id)}
                 />
@@ -161,11 +167,12 @@ function StatCard({ icon, label, value }: { icon: string; label: string; value: 
 }
 
 function DashboardCard({
-  car, featured, onView, onPatch, onDelete,
+  car, featured, onView, onEdit, onPatch, onDelete,
 }: {
   car: CarListing
   featured: boolean
   onView: () => void
+  onEdit: () => void
   onPatch: (status: string) => void
   onDelete: () => void
 }) {
@@ -180,19 +187,22 @@ function DashboardCard({
       backgroundColor: '#1A1A1A', borderRadius: 16, overflow: 'hidden',
       borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     }}>
-      <View style={{ flexDirection: 'row' }}>
-        {primaryImage ? (
-          <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: featured ? 120 : 100, height: featured ? 110 : 90 }} contentFit="cover" />
-        ) : (
-          <View style={{ width: 100, height: 90, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 32 }}>🚗</Text>
-          </View>
-        )}
-        <View style={{ flex: 1, padding: 12, gap: 4 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <TouchableOpacity onPress={() => setMenuVisible(true)} accessibilityLabel="אפשרויות נוספות" style={{ padding: 4 }}>
-              <Text style={{ color: '#888', fontSize: 20 }}>⋯</Text>
-            </TouchableOpacity>
+      <View style={{ position: 'relative' }}>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={onView}
+          accessibilityRole="button"
+          accessibilityLabel={`צפה במודעה: ${car.brand} ${car.model} ${car.year}`}
+          style={{ flexDirection: 'row' }}
+        >
+          {primaryImage ? (
+            <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: featured ? 120 : 100, height: featured ? 110 : 90 }} contentFit="cover" />
+          ) : (
+            <View style={{ width: 100, height: 90, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 32 }}>🚗</Text>
+            </View>
+          )}
+          <View style={{ flex: 1, padding: 12, gap: 4, ...(I18nManager.isRTL ? { paddingRight: 40 } : { paddingLeft: 40 }) }}>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15, textAlign: 'right' }}>
                 {car.brand} {car.model} {car.year}
@@ -201,19 +211,39 @@ function DashboardCard({
                 <Text style={{ color: statusColor, fontSize: 11, fontWeight: '600' }}>{statusLabel}</Text>
               </View>
             </View>
+            <Text style={{ color: '#D4A843', fontWeight: '700', fontSize: 15, textAlign: 'right' }}>
+              {formatILS(car.price)}
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <Text style={{ color: '#888888', fontSize: 12 }}>❤️ {car.likeCount}</Text>
+              <Text style={{ color: '#888888', fontSize: 12 }}>👁 {car.viewCount}</Text>
+            </View>
           </View>
-          <Text style={{ color: '#D4A843', fontWeight: '700', fontSize: 15, textAlign: 'right' }}>
-            {formatILS(car.price)}
-          </Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-            <Text style={{ color: '#888888', fontSize: 12 }}>❤️ {car.likeCount}</Text>
-            <Text style={{ color: '#888888', fontSize: 12 }}>👁 {car.viewCount}</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          accessibilityLabel="אפשרויות נוספות"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            position: 'absolute',
+            top: 8,
+            ...(I18nManager.isRTL ? { right: 8 } : { left: 8 }),
+            padding: 4,
+          }}
+        >
+          <Text style={{ color: '#888', fontSize: 20 }}>⋯</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Quick actions row */}
       <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' }}>
+        <TouchableOpacity
+          onPress={onEdit}
+          accessibilityLabel="ערוך מודעה"
+          style={{ flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.06)' }}
+        >
+          <Text style={{ color: '#D4A843', fontSize: 13 }}>✎ ערוך</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={onView}
           accessibilityLabel="צפה במודעה"
@@ -259,6 +289,7 @@ function DashboardCard({
             <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 17, textAlign: 'right', marginBottom: 12 }}>
               {car.brand} {car.model}
             </Text>
+            <MenuAction label="✎ ערוך מודעה" color="#D4A843" onPress={() => { setMenuVisible(false); onEdit() }} />
             <MenuAction label="👁 צפה במודעה" color="#F5F5F5" onPress={() => { setMenuVisible(false); onView() }} />
             {car.status !== 'SOLD' && <MenuAction label="✓ סמן כנמכר" color="#D4A843" onPress={() => { setMenuVisible(false); onPatch('SOLD') }} />}
             {car.status === 'ACTIVE' && <MenuAction label="⏸ השהה מודעה" color="#FF9800" onPress={() => { setMenuVisible(false); onPatch('PAUSED') }} />}
