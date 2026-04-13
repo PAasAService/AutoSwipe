@@ -34,7 +34,7 @@ export default async function FavoritesPage() {
       mileage: f.listing!.mileage,
       fuelType: f.listing!.fuelType,
       location: f.listing!.location,
-      thumb: f.listing!.images[0]?.url ?? null,
+      thumb: f.listing!.images[0]?.path ?? null,
       sellerId: f.listing!.sellerId,
     }))
 

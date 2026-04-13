@@ -200,7 +200,7 @@ export async function buildFeed(options: FeedOptions): Promise<FeedListing[]> {
         : undefined,
       images: listing.images.map((img) => ({
         id: img.id,
-        url: img.url,
+        path: img.path,
         order: img.order,
         isPrimary: img.isPrimary,
       })),
@@ -225,9 +225,18 @@ export async function buildFeed(options: FeedOptions): Promise<FeedListing[]> {
     const dealTag = classifyDeal(listing.price, marketAvg, isNew)
 
     // Score (parse JSON array fields from SQLite; use neutral prefs if user skipped onboarding)
-    const effectivePrefs = prefs
+    const effectivePrefs: BuyerPreferences = prefs
       ? parsePrefs(prefs)
-      : { budgetMax: 999999, preferredBrands: [], preferredModels: [], fuelPreferences: [], vehicleTypes: [], location: '', searchRadius: 100, ownershipYears: 3 }
+      : ({
+          budgetMax: 999999,
+          preferredBrands: [],
+          preferredModels: [],
+          fuelPreferences: [],
+          vehicleTypes: [],
+          location: '',
+          searchRadius: 100,
+          ownershipYears: 3,
+        } as unknown as BuyerPreferences)
     const matchBreakdown = scoreListing(
       typedListing,
       effectivePrefs,

@@ -25,9 +25,6 @@ npm run db:seed                # seeds demo data
 | `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | `https://your-domain.vercel.app` |
 | `NEXT_PUBLIC_APP_URL` | `https://your-domain.vercel.app` |
-| `CLOUDINARY_CLOUD_NAME` | From cloudinary.com |
-| `CLOUDINARY_API_KEY` | From cloudinary.com |
-| `CLOUDINARY_API_SECRET` | From cloudinary.com |
 | `RESEND_API_KEY` | From resend.com (free: 3000 emails/month) |
 | `EMAIL_FROM` | `noreply@your-domain.com` |
 
@@ -38,7 +35,7 @@ npm run db:seed                # seeds demo data
 - [ ] DATABASE_URL points to Neon (not localhost)
 - [ ] NEXTAUTH_SECRET is a real random secret (not a placeholder)
 - [ ] NEXTAUTH_URL matches your actual domain
-- [ ] Cloudinary credentials are production keys
+- [ ] Listing images: default is local disk (`public/uploads`). On Vercel, disk is ephemeral—use a persistent volume, object storage, or another host if you need uploads to survive redeploys.
 - [ ] Build command includes `prisma migrate deploy`
 - [ ] Run `npm run db:seed` once after first deploy (via Vercel CLI or dashboard)
 

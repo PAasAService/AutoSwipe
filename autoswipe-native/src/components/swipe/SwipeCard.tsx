@@ -8,6 +8,7 @@ import { calculateCostBreakdown } from '../../lib/utils/cost-calculator'
 import { DEAL_TAG_LABELS, DEAL_TAG_COLORS, FUEL_TYPE_LABELS } from '../../constants/cars'
 import { colors } from '../../lib/theme'
 import CarImagePlaceholder from '../ui/CarImagePlaceholder'
+import { listingImageUri } from '../../lib/listing-image-uri'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 export const CARD_WIDTH = SCREEN_WIDTH - 32
@@ -83,7 +84,7 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
         >
           {primaryImage ? (
             <Image
-              source={{ uri: primaryImage.url }}
+              source={{ uri: listingImageUri(primaryImage.path) }}
               style={{ width: '100%', height: '100%' }}
               contentFit="cover"
               transition={200}
@@ -248,7 +249,7 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
           {/* Images */}
           <FlatList
             data={card.images}
-            keyExtractor={(item) => item.url}
+            keyExtractor={(item) => item.id}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
@@ -265,7 +266,7 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
             renderItem={({ item }) => (
               <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75, justifyContent: 'center' }}>
                 <Image
-                  source={{ uri: item.url }}
+                  source={{ uri: listingImageUri(item.path) }}
                   style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.75 }}
                   contentFit="contain"
                 />

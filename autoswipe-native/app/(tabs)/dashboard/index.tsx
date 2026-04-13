@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import Toast from 'react-native-toast-message'
 import { api } from '../../../src/lib/api'
+import { listingImageUri } from '../../../src/lib/listing-image-uri'
 import { CarListing } from '../../../src/types'
 import { formatILS } from '../../../src/lib/utils/format'
 
@@ -181,7 +182,7 @@ function DashboardCard({
     }}>
       <View style={{ flexDirection: 'row' }}>
         {primaryImage ? (
-          <Image source={{ uri: primaryImage.url }} style={{ width: featured ? 120 : 100, height: featured ? 110 : 90 }} contentFit="cover" />
+          <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: featured ? 120 : 100, height: featured ? 110 : 90 }} contentFit="cover" />
         ) : (
           <View style={{ width: 100, height: 90, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: 32 }}>🚗</Text>

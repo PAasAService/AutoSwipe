@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message'
 import * as Haptics from 'expo-haptics'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../../src/lib/api'
+import { listingImageUri } from '../../src/lib/listing-image-uri'
 import { useFavorites, useRemoveFavorite } from '../../src/hooks/useFavorites'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
 import { CarListing } from '../../src/types'
@@ -181,7 +182,7 @@ function FavoriteCard({
     }}>
       <TouchableOpacity onPress={onPress} style={{ flexDirection: 'row' }}>
         {primaryImage ? (
-          <Image source={{ uri: primaryImage.url }} style={{ width: 110, height: 100 }} contentFit="cover" />
+          <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: 110, height: 100 }} contentFit="cover" />
         ) : (
           <View style={{ width: 110, height: 100, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
             <Text style={{ fontSize: 32 }}>🚗</Text>

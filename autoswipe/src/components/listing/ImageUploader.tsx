@@ -3,7 +3,7 @@
 /**
  * ImageUploader
  *
- * Handles real image uploads to Cloudinary with:
+ * Handles image uploads to local server storage (/public/uploads) with:
  *  - File picker (click) + drag-and-drop
  *  - Per-image XHR upload with live progress bar
  *  - Retry on error
@@ -29,8 +29,7 @@ import { clsx } from 'clsx'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface UploadedImage {
-  url:      string
-  publicId: string
+  path: string
 }
 
 type ItemStatus = 'pending' | 'uploading' | 'done' | 'error'
@@ -41,18 +40,9 @@ interface ImageItem {
   previewUrl: string
   status:     ItemStatus
   progress:   number        // 0–100
-  url?:       string
-  publicId?:  string
+  storagePath?: string
   error?:     string
   xhr?:       XMLHttpRequest
-}
-
-interface SignResponse {
-  signature: string
-  timestamp: number
-  folder:    string
-  cloudName: string
-  apiKey:    string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,8 +76,8 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
   // Notify parent of done-list (order preserved)
   useEffect(() => {
     const done = items
-      .filter((it) => it.status === 'done' && it.url && it.publicId)
-      .map((it) => ({ url: it.url!, publicId: it.publicId! }))
+      .filter((it) => it.status === 'done' && it.storagePath)
+      .map((it) => ({ path: it.storagePath! }))
     onChange(done)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items])
@@ -109,26 +99,8 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
   // ── Upload one file ───────────────────────────────────────────────────────
 
   const uploadOne = useCallback(async (item: ImageItem) => {
-    let sign: SignResponse
-    try {
-      const res = await fetch('/api/upload/sign', { method: 'POST' })
-      if (!res.ok) throw new Error('sign failed')
-      sign = await res.json()
-    } catch {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id ? { ...it, status: 'error', error: 'שגיאה בחתימת ההעלאה' } : it
-        )
-      )
-      return
-    }
-
     const formData = new FormData()
-    formData.append('file',      item.file)
-    formData.append('api_key',   sign.apiKey)
-    formData.append('timestamp', String(sign.timestamp))
-    formData.append('signature', sign.signature)
-    formData.append('folder',    sign.folder)
+    formData.append('file', item.file)
 
     const xhr = new XMLHttpRequest()
 
@@ -147,11 +119,18 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          const result = JSON.parse(xhr.responseText)
+          const result = JSON.parse(xhr.responseText) as { path?: string }
+          if (!result.path) throw new Error('no path')
           setItems((prev) =>
             prev.map((it) =>
               it.id === item.id
-                ? { ...it, status: 'done', progress: 100, url: result.secure_url, publicId: result.public_id, xhr: undefined }
+                ? {
+                    ...it,
+                    status: 'done',
+                    progress: 100,
+                    storagePath: result.path,
+                    xhr: undefined,
+                  }
                 : it
             )
           )
@@ -180,11 +159,10 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
     })
 
     xhr.addEventListener('abort', () => {
-      // Silently remove the item when aborted (user removed it mid-upload)
       setItems((prev) => prev.filter((it) => it.id !== item.id))
     })
 
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${sign.cloudName}/image/upload`)
+    xhr.open('POST', '/api/upload/listing-image')
     xhr.send(formData)
   }, [])
 
@@ -241,8 +219,8 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
 
       item.xhr?.abort()
 
-      if (item.publicId) {
-        fetch(`/api/upload?publicId=${encodeURIComponent(item.publicId)}`, { method: 'DELETE' }).catch(() => {})
+      if (item.storagePath) {
+        fetch(`/api/upload?path=${encodeURIComponent(item.storagePath)}`, { method: 'DELETE' }).catch(() => {})
       }
 
       if (item.previewUrl.startsWith('blob:')) {
@@ -275,9 +253,9 @@ export function ImageUploader({ onChange, onBusyChange, maxImages = 6 }: Props) 
         const item = prev.find((it) => it.id === id)
         if (!item) return prev
         const reset = prev.map((it) =>
-          it.id === id ? { ...it, status: 'uploading' as ItemStatus, progress: 0, error: undefined, publicId: undefined, url: undefined } : it
+          it.id === id ? { ...it, status: 'uploading' as ItemStatus, progress: 0, error: undefined, storagePath: undefined } : it
         )
-        setTimeout(() => uploadOne({ ...item, status: 'uploading', progress: 0, error: undefined, publicId: undefined, url: undefined }), 0)
+        setTimeout(() => uploadOne({ ...item, status: 'uploading', progress: 0, error: undefined, storagePath: undefined }), 0)
         return reset
       })
     },

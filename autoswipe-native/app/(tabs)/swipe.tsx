@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useRecommendations, useResetFeed } from '../../src/hooks/useRecommendations'
 import SwipeDeck from '../../src/components/swipe/SwipeDeck'
 import Skeleton from '../../src/components/ui/Skeleton'
+import { SwipeNotificationsEntry } from '../../src/components/notifications/SwipeNotificationsEntry'
 
 export default function SwipeScreen() {
   const router = useRouter()
@@ -19,20 +20,26 @@ export default function SwipeScreen() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/explore')}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 5,
-                backgroundColor: '#1A1A1A', borderRadius: 10,
-                paddingHorizontal: 12, paddingVertical: 7,
-                borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-              }}
-            >
-              <Text style={{ color: '#888', fontSize: 12 }}>גריד</Text>
-              <Text style={{ color: '#888', fontSize: 14 }}>⊞</Text>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: '#D4A843' }}>AutoSwipe 🔥</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
+              <SwipeNotificationsEntry />
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/explore')}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  backgroundColor: '#1A1A1A', borderRadius: 10,
+                  paddingHorizontal: 12, paddingVertical: 7,
+                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <Text style={{ color: '#888', fontSize: 12 }}>גריד</Text>
+                <Text style={{ color: '#888', fontSize: 14 }}>⊞</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 2, alignItems: 'center' }}>
+              <Text style={{ fontSize: 28, fontWeight: '800', color: '#D4A843' }}>AutoSwipe 🔥</Text>
+            </View>
+            <View style={{ flex: 1 }} />
           </View>
           <Text style={{ color: '#888888', textAlign: 'right', marginTop: 2 }}>גלול ימינה לשמור, שמאלה לדלג</Text>
         </View>
@@ -69,24 +76,28 @@ export default function SwipeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Toggle to grid view */}
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/explore')}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 5,
-              backgroundColor: '#1A1A1A', borderRadius: 10,
-              paddingHorizontal: 12, paddingVertical: 7,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-            }}
-          >
-            <Text style={{ color: '#888', fontSize: 12 }}>גריד</Text>
-            <Text style={{ color: '#888', fontSize: 14 }}>⊞</Text>
-          </TouchableOpacity>
-
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#D4A843' }}>
-            AutoSwipe 🔥
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start' }}>
+            <SwipeNotificationsEntry />
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/explore')}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 5,
+                backgroundColor: '#1A1A1A', borderRadius: 10,
+                paddingHorizontal: 12, paddingVertical: 7,
+                borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+              }}
+            >
+              <Text style={{ color: '#888', fontSize: 12 }}>גריד</Text>
+              <Text style={{ color: '#888', fontSize: 14 }}>⊞</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 2, alignItems: 'center' }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: '#D4A843' }}>
+              AutoSwipe 🔥
+            </Text>
+          </View>
+          <View style={{ flex: 1 }} />
         </View>
         <Text style={{ color: '#888888', textAlign: 'right', marginTop: 2 }}>
           גלול ימינה לשמור, שמאלה לדלג

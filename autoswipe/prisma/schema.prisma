@@ -54,8 +54,39 @@ model User {
   blocksInitiated  UserBlock[]     @relation("UserBlockBlocker")
   blocksReceived   UserBlock[]     @relation("UserBlockBlocked")
   listingWaitlist  ListingWaitlist[]
+  notifications    Notification[]
+  pushDevices      PushDevice[]
 
   @@index([email])
+}
+
+/// In-app + push notification inbox row
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    @default("system")
+  title     String
+  body      String
+  /// JSON string for deep links / metadata
+  data      String    @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Expo push tokens (one row per device)
+model PushDevice {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String // ios | android
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// SSO linkage (Google, Apple, …)
@@ -179,8 +210,8 @@ model ListingImage {
   id        String     @id @default(cuid())
   listingId String
   listing   CarListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  url       String
-  publicId  String?
+  /// Public path under /public, e.g. /uploads/listings/{id}/0.jpg
+  path      String
   order     Int        @default(0)
   isPrimary Boolean    @default(false)
   createdAt DateTime   @default(now())

@@ -4,6 +4,7 @@ import { FeedListing } from '../../types'
 import { formatILS, formatMileage } from '../../lib/utils/format'
 import { DEAL_TAG_LABELS, DEAL_TAG_COLORS } from '../../constants/cars'
 import { calculateCostBreakdown } from '../../lib/utils/cost-calculator'
+import { listingImageUri } from '../../lib/listing-image-uri'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 // 16px left padding + 16px right padding + 8px column gap → (w - 40) / 2
@@ -46,7 +47,7 @@ export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorit
       <View style={{ position: 'relative' }}>
         {primaryImage ? (
           <Image
-            source={{ uri: primaryImage.url }}
+            source={{ uri: listingImageUri(primaryImage.path) }}
             style={{ width: CARD_WIDTH, height: CARD_WIDTH * 0.72 }}
             contentFit="cover"
             transition={200}

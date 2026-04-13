@@ -76,7 +76,7 @@ export interface BuyerPreferences {
 
 export interface ListingImage {
   id: string
-  url: string
+  path: string
   order: number
   isPrimary: boolean
 }
@@ -259,7 +259,7 @@ export interface CreateListingInput {
   maintenanceEstimate: number
   depreciationRate: number
   description?: string
-  images: string[] // URLs after upload
+  images: { path: string }[] // local public paths after upload
   plateNumber?: string
   isGovVerified?: boolean
 }

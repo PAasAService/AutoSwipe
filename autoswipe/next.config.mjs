@@ -2,6 +2,7 @@
 const nextConfig = {
   images: {
     remotePatterns: [
+      // Legacy rows: in-place SQLite migrate copied old `url` into `path`; re-seed or re-upload for local `/uploads/...` only.
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',

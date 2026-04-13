@@ -5,6 +5,10 @@ node_modules/
 .next/
 out/
 
+# Uploaded listing images (local disk); keep folder in git
+public/uploads/*
+!public/uploads/.gitkeep
+
 # Env and local DB
 .env
 .env.local

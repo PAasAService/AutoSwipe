@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
+import { listingImageUri } from '../../src/lib/listing-image-uri'
 import { useFavorites, useToggleFavorite } from '../../src/hooks/useFavorites'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
 import { CarListing } from '../../src/types'
@@ -102,7 +103,7 @@ export default function ListingDetailScreen() {
               listing.images.map((img) => (
                 <Image
                   key={img.id}
-                  source={{ uri: img.url }}
+                  source={{ uri: listingImageUri(img.path) }}
                   style={{ width: SCREEN_WIDTH, height: SCREEN_WIDTH * 0.7 }}
                   contentFit="cover"
                 />

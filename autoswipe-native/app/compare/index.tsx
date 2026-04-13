@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQueries } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
+import { listingImageUri } from '../../src/lib/listing-image-uri'
 import { CarListing } from '../../src/types'
 import { formatILS, formatMileage } from '../../src/lib/utils/format'
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS } from '../../src/constants/cars'
@@ -161,7 +162,7 @@ export default function CompareScreen() {
               <View style={{ position: 'relative' }}>
                 {car.images[0] && (
                   <Image
-                    source={{ uri: car.images[0].url }}
+                    source={{ uri: listingImageUri(car.images[0].path) }}
                     style={{ width: colWidth - 6, height: 64, borderRadius: 10, borderWidth: i === overallWinner ? 2 : 0, borderColor: '#D4A843' }}
                     contentFit="cover"
                   />

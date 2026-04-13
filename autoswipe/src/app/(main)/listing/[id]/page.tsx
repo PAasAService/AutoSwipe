@@ -64,7 +64,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
       }))
     : false
 
-  const primaryImage = listing.images[0]?.url
+  const primaryImage = listing.images[0]?.path
 
   return (
     <div className="min-h-screen bg-surface-container-lowest" dir="rtl">
@@ -276,7 +276,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
                   }`}
                 >
                   <Image
-                    src={img.url}
+                    src={img.path}
                     alt={`תמונה ${i + 1}`}
                     width={128}
                     height={96}
