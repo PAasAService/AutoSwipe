@@ -1,6 +1,6 @@
 #!/bin/sh
 # Point this repo at versioned hooks under .githooks/ (post-merge, post-checkout, post-rewrite).
-# Run once per clone: ./scripts/install-git-hooks.sh
+# Run once per clone: ./scripts/install-git-hooks.sh !!
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
