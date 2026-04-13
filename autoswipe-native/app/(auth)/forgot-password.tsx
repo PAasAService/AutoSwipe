@@ -5,7 +5,10 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { goBackSafe } from '../../src/lib/go-back-safe'
 import { getApiBaseUrl } from '../../src/lib/api-base-url'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../src/constants/layout'
 
 export default function ForgotPasswordScreen() {
   const router = useRouter()
@@ -45,7 +48,7 @@ export default function ForgotPasswordScreen() {
           <Text style={styles.successBody}>
             אם הכתובת קיימת במערכת, שלחנו לך קישור לאיפוס הסיסמה. הקישור תקף ל-15 דקות.
           </Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => goBackSafe('/(auth)/login')} style={styles.backBtn}>
             <Text style={styles.backBtnText}>חזרה להתחברות</Text>
           </TouchableOpacity>
         </View>
@@ -58,12 +61,15 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: '#0F0F0F' }}
     >
-      <SafeAreaView style={{ flex: 1, padding: 24 }}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>→ חזרה</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.pageTitle}>שכחתי סיסמה</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafe('/(auth)/login')}
+          backVariant="labeled"
+          backLabel="חזרה"
+          title="שכחתי סיסמה"
+          titleSize={22}
+        />
+        <View style={{ flex: 1, paddingHorizontal: SCREEN_EDGE, paddingTop: 16 }}>
         <Text style={styles.pageSubtitle}>
           הזן את כתובת המייל שלך ונשלח לך קישור לאיפוס הסיסמה.
         </Text>
@@ -91,6 +97,7 @@ export default function ForgotPasswordScreen() {
             : <Text style={styles.submitBtnText}>שלח קישור לאיפוס</Text>
           }
         </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </KeyboardAvoidingView>
   )
@@ -134,27 +141,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  backLink: {
-    marginBottom: 28,
-    paddingVertical: 4,
-  },
-  backLinkText: {
-    color: '#888',
-    fontSize: 15,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#F5F5F5',
-    textAlign: 'right',
-    marginBottom: 8,
-  },
   pageSubtitle: {
     fontSize: 15,
     color: '#888',
     textAlign: 'right',
     marginBottom: 32,
     lineHeight: 24,
+    writingDirection: 'rtl',
   },
   input: {
     backgroundColor: '#1A1A1A',

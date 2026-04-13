@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { hrefWithReturn } from '../../lib/go-back-safe'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { useNotificationsPreview } from '../../hooks/useNotificationsPreview'
@@ -187,7 +188,7 @@ export function SwipeNotificationsEntry() {
             <TouchableOpacity
               onPress={() => {
                 setOpen(false)
-                router.push('/notifications' as never)
+                router.push(hrefWithReturn('/notifications', 'swipe'))
               }}
               style={{
                 paddingVertical: 14,

@@ -11,6 +11,10 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../../src/lib/go-back-safe'
+import { useReturnTo } from '../../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../../src/constants/layout'
 import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { useThread, useSendMessage, useStartConversation } from '../../../src/hooks/useThread'
@@ -26,6 +30,7 @@ const BUYER_MESSAGE_LIMIT = 3
 export default function ChatScreen() {
   const { threadId } = useLocalSearchParams<{ threadId: string }>()
   const router = useRouter()
+  const returnTo = useReturnTo()
   const qc = useQueryClient()
   const { data, isLoading, isError } = useThread(threadId)
   const { data: me } = useCurrentUser()
@@ -61,20 +66,22 @@ export default function ChatScreen() {
 
   if (isError || !data) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-        <Text style={{ fontSize: 48, marginBottom: 16 }}>💬</Text>
-        <Text style={{ color: '#F5F5F5', fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
-          לא ניתן לטעון את השיחה
-        </Text>
-        <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
-          ייתכן שהשיחה הוסרה או שאין לך גישה אליה.
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginTop: 24, paddingVertical: 12, paddingHorizontal: 28, backgroundColor: '#1A1A1A', borderRadius: 12 }}
-        >
-          <Text style={{ color: '#D4A843', fontWeight: '700', fontSize: 15 }}>חזור ←</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/messages')}
+          backVariant="labeled"
+          title="הודעות"
+          titleSize={20}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>💬</Text>
+          <Text style={{ color: '#F5F5F5', fontSize: 17, fontWeight: '700', textAlign: 'center' }}>
+            לא ניתן לטעון את השיחה
+          </Text>
+          <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20, writingDirection: 'rtl' }}>
+            ייתכן שהשיחה הוסרה או שאין לך גישה אליה.
+          </Text>
+        </View>
       </SafeAreaView>
     )
   }
@@ -100,41 +107,39 @@ export default function ChatScreen() {
   const isSuperLike = thread.isSuperLike === true
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.08)',
-        gap: 12,
-      }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={{ color: '#D4A843', fontSize: 16 }}>→</Text>
-        </TouchableOpacity>
-
-        {/* Car info — tappable to listing */}
-        <TouchableOpacity
-          onPress={() => router.push(`/listing/${thread.listing.id}`)}
-          activeOpacity={0.75}
-          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}
-        >
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15 }}>{otherUser.name}</Text>
-            <Text style={{ color: '#D4A843', fontSize: 12 }}>
-              {thread.listing.brand} {thread.listing.model} ←
-            </Text>
-          </View>
-          {thread.listing.images?.[0] && (
-            <Image
-              source={{ uri: listingImageUri(thread.listing.images[0].path) }}
-              style={{ width: 44, height: 44, borderRadius: 8 }}
-              contentFit="cover"
-            />
-          )}
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/messages')}
+        center={(
+          <TouchableOpacity
+            onPress={() => router.push(`/listing/${thread.listing.id}`)}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              justifyContent: 'flex-start',
+              width: '100%',
+            }}
+          >
+            {thread.listing.images?.[0] && (
+              <Image
+                source={{ uri: listingImageUri(thread.listing.images[0].path) }}
+                style={{ width: 44, height: 44, borderRadius: 8 }}
+                contentFit="cover"
+              />
+            )}
+            <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
+              <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15, writingDirection: 'rtl' }} numberOfLines={1}>
+                {otherUser.name}
+              </Text>
+              <Text style={{ color: '#D4A843', fontSize: 12, writingDirection: 'rtl' }} numberOfLines={1}>
+                {thread.listing.brand} {thread.listing.model}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -145,7 +150,7 @@ export default function ChatScreen() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: 16, gap: 8 }}
+          contentContainerStyle={{ padding: SCREEN_EDGE, gap: 8 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           renderItem={({ item }) => (
             <MessageBubble message={item} isMe={item.senderId === me?.id} />

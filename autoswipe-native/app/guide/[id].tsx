@@ -7,7 +7,11 @@ import {
   Share,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
+import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
+import { useReturnTo } from '../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../src/constants/layout'
 import { GUIDE_ITEMS, GuideBlock } from '../../src/data/recommended'
 
 function BlockRenderer({ block }: { block: GuideBlock }) {
@@ -182,17 +186,21 @@ function BlockRenderer({ block }: { block: GuideBlock }) {
 
 export default function GuideScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
-
+  const returnTo = useReturnTo()
   const guide = GUIDE_ITEMS.find((g) => g.id === id)
 
   if (!guide || !guide.content) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#666', fontSize: 16 }}>המדריך לא נמצא</Text>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#D4A843', fontSize: 14 }}>חזור</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+        <ScreenHeader
+          onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/recommended')}
+          backVariant="labeled"
+          title="מדריך"
+          titleSize={20}
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ color: '#666', fontSize: 16, writingDirection: 'rtl' }}>המדריך לא נמצא</Text>
+        </View>
       </SafeAreaView>
     )
   }
@@ -204,28 +212,21 @@ export default function GuideScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
-      {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.06)',
-      }}>
-        <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={{ fontSize: 20 }}>🔗</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={{ color: '#D4A843', fontSize: 15, fontWeight: '600' }}>{'< חזור'}</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        mode="edges"
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/recommended')}
+        backVariant="labeled"
+        trailing={(
+          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={{ fontSize: 20 }}>🔗</Text>
+          </TouchableOpacity>
+        )}
+      />
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        contentContainerStyle={{ padding: SCREEN_EDGE, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Guide hero */}

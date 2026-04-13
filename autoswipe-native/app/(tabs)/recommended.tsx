@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { hrefWithReturn } from '../../src/lib/go-back-safe'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
 import Skeleton from '../../src/components/ui/Skeleton'
 import {
@@ -345,7 +346,7 @@ function GuideCard({ guide }: { guide: GuideItem }) {
   function handlePress() {
     if (guide.isComingSoon) return
     if (guide.content) {
-      router.push(`/guide/${guide.id}`)
+      router.push(hrefWithReturn(`/guide/${guide.id}`, 'recommended'))
     } else {
       openUrl(guide.url)
     }

@@ -50,26 +50,16 @@ export default async function SecurityPage() {
             </div>
           </div>
 
-          {/* Change password row */}
-          <div className="flex items-center justify-between px-4 py-4 border-t border-outline-variant/20">
-            <div className="flex items-center gap-2">
-              <span className="text-xs bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-medium">
-                בקרוב
-              </span>
-              <button
-                disabled
-                className="text-sm text-on-surface-variant opacity-60 cursor-not-allowed"
-              >
-                שלח קישור לאיפוס
-              </button>
-            </div>
+          {/* Change password — same flow as native: forgot-password email */}
+          <Link href="/forgot-password" className="flex items-center justify-between px-4 py-4 border-t border-outline-variant/20 hover:bg-surface-container-high/50 transition-colors">
+            <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
             <div className="flex items-center gap-2.5">
-              <span className="text-on-surface text-sm font-medium">שינוי סיסמה</span>
+              <span className="text-on-surface text-sm font-medium">שינוי / איפוס סיסמה</span>
               <div className="w-8 h-8 rounded-xl bg-surface-container-high flex items-center justify-center">
-                <Lock className="w-4 h-4 text-on-surface-variant" />
+                <Lock className="w-4 h-4 text-primary" />
               </div>
             </div>
-          </div>
+          </Link>
         </Section>
 
         {/* Privacy */}

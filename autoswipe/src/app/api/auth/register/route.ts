@@ -3,6 +3,12 @@ import bcrypt from 'bcryptjs'
 import { SignJWT } from 'jose'
 import { prisma } from '@/lib/db'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import {
+  USER_DISPLAY_NAME_TAKEN_CODE,
+  USER_DISPLAY_NAME_TAKEN_HE,
+  USER_EMAIL_TAKEN_CODE,
+} from '@/lib/user-display-name'
 import { sendEmail, buildWelcomeEmail } from '@/lib/email'
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
@@ -44,14 +50,26 @@ export async function POST(req: NextRequest) {
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
-      return NextResponse.json({ error: 'כתובת המייל כבר קיימת במערכת' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'כתובת המייל כבר קיימת במערכת', code: USER_EMAIL_TAKEN_CODE },
+        { status: 409 }
+      )
+    }
+
+    const nameTrimmed = name.trim()
+    const nameTaken = await prisma.user.findFirst({ where: { name: nameTrimmed } })
+    if (nameTaken) {
+      return NextResponse.json(
+        { error: USER_DISPLAY_NAME_TAKEN_HE, code: USER_DISPLAY_NAME_TAKEN_CODE },
+        { status: 409 }
+      )
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
 
     const user = await prisma.user.create({
       data: {
-        name,
+        name: nameTrimmed,
         email,
         passwordHash,
         roles: JSON.stringify(roles),
@@ -90,6 +108,21 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.errors[0].message }, { status: 400 })
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const target = (err.meta as { target?: string[] } | undefined)?.target
+      if (Array.isArray(target) && target.includes('name')) {
+        return NextResponse.json(
+          { error: USER_DISPLAY_NAME_TAKEN_HE, code: USER_DISPLAY_NAME_TAKEN_CODE },
+          { status: 409 }
+        )
+      }
+      if (Array.isArray(target) && target.includes('email')) {
+        return NextResponse.json(
+          { error: 'כתובת המייל כבר קיימת במערכת', code: USER_EMAIL_TAKEN_CODE },
+          { status: 409 }
+        )
+      }
     }
     console.error('[register]', err)
     return NextResponse.json({ error: 'שגיאה פנימית' }, { status: 500 })

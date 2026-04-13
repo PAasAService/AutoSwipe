@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { goBackSafeWithReturn } from '../../../src/lib/go-back-safe'
+import { useReturnTo } from '../../../src/hooks/useReturnTo'
+import { ScreenHeader } from '../../../src/components/ui/ScreenHeader'
+import { SCREEN_EDGE } from '../../../src/constants/layout'
 import Toast from 'react-native-toast-message'
 import { api } from '../../../src/lib/api'
 
 export default function SecurityScreen() {
-  const router = useRouter()
+  const returnTo = useReturnTo()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -45,18 +48,15 @@ export default function SecurityScreen() {
   )
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
+      <ScreenHeader
+        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/settings')}
+        backVariant="text"
+        backLabel="סגור"
+        title="אבטחה ופרטיות"
+      />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingBottom: 12 }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={{ color: '#D4A843', fontSize: 16 }}>סגור</Text>
-          </TouchableOpacity>
-          <Text style={{ color: '#F5F5F5', fontSize: 20, fontWeight: '700' }}>אבטחה ופרטיות</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
+        <ScrollView contentContainerStyle={{ padding: SCREEN_EDGE }}>
           <Text style={{ color: '#888', fontSize: 14, textAlign: 'right', marginBottom: 20 }}>
             לשינוי הסיסמה נדרש אימות הסיסמה הנוכחית
           </Text>

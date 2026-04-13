@@ -4,6 +4,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { hrefWithReturn } from '../../../src/lib/go-back-safe'
 import { Image } from 'expo-image'
 import { useThreads, useStartConversation } from '../../../src/hooks/useThread'
 import { formatRelativeTime } from '../../../src/lib/utils/format'
@@ -215,14 +216,14 @@ export default function MessagesScreen() {
               <PendingThreadItem
                 thread={item}
                 myId={myId}
-                onPress={() => router.push(`/(tabs)/messages/${item.id}`)}
+                onPress={() => router.push(hrefWithReturn(`/(tabs)/messages/${item.id}`, 'messages'))}
                 onPressListing={() => router.push(`/listing/${item.listing.id}`)}
               />
             ) : (
               <ActiveThreadItem
                 thread={item}
                 myId={myId}
-                onPress={() => router.push(`/(tabs)/messages/${item.id}`)}
+                onPress={() => router.push(hrefWithReturn(`/(tabs)/messages/${item.id}`, 'messages'))}
                 onPressListing={() => router.push(`/listing/${item.listing.id}`)}
               />
             )
@@ -369,7 +370,7 @@ function PendingThreadItem({
         <View style={{ position: 'relative' }}>
           {carImage ? (
             <Image
-              source={{ uri: carImage.url }}
+              source={{ uri: listingImageUri(carImage.path) }}
               style={{ width: 58, height: 58, borderRadius: 12 }}
               contentFit="cover"
             />

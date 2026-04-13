@@ -7,8 +7,11 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: queryKeys.me(),
     queryFn: () =>
-      api.get<{ data: User }>('/api/users/me').then((r) => {
+      api.get<{ data: User | null }>('/api/users/me').then((r) => {
         const user = r.data
+        if (!user?.id) {
+          throw new Error('401')
+        }
         // roles may come as JSON string from backend
         if (typeof user.roles === 'string') {
           try { user.roles = JSON.parse(user.roles as any) } catch { user.roles = [] }
