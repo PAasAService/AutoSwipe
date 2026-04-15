@@ -13,6 +13,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import Toast from 'react-native-toast-message'
 import { hrefWithReturn } from '../../src/lib/go-back-safe'
 import { HEADER_DISMISS_FONT_SIZE } from '../../src/constants/ui'
 import { useRecommendations } from '../../src/hooks/useRecommendations'
@@ -142,6 +143,7 @@ export default function ExploreScreen() {
   const [showFilter, setShowFilter] = useState(false)
   const [showSort, setShowSort] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [compareIds, setCompareIds] = useState<string[]>([])
 
   const favoriteIds = new Set(favorites?.map((f) => f.id) ?? [])
   const allCards = data?.pages.flatMap((p) => p.data) ?? []
@@ -184,6 +186,16 @@ export default function ExploreScreen() {
       ...d,
       fuelTypes: d.fuelTypes.includes(ft) ? d.fuelTypes.filter((v) => v !== ft) : [...d.fuelTypes, ft],
     }))
+  }
+
+  function toggleCompare(id: string) {
+    if (compareIds.includes(id)) {
+      setCompareIds((prev) => prev.filter((x) => x !== id))
+    } else if (compareIds.length >= 3) {
+      Toast.show({ type: 'error', text1: 'ניתן להשוות עד 3 רכבים' })
+    } else {
+      setCompareIds((prev) => [...prev, id])
+    }
   }
 
   // ── Active filter chips (above grid) ──────────────────────────────────────
@@ -311,7 +323,7 @@ export default function ExploreScreen() {
         data={displayedCards}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 100 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: compareIds.length >= 2 ? 120 : 100 }}
         columnWrapperStyle={{ gap: 8, marginBottom: 8 }}
         showsVerticalScrollIndicator={false}
         onEndReached={() => { if (hasNextPage && !isFetchingNextPage) fetchNextPage() }}
@@ -325,6 +337,8 @@ export default function ExploreScreen() {
             isFavorited={favoriteIds.has(item.id)}
             onPress={() => router.push(`/listing/${item.id}`)}
             onToggleFavorite={() => toggleFavorite.mutate({ listingId: item.id, isFavorited: favoriteIds.has(item.id) })}
+            isSelected={compareIds.includes(item.id)}
+            onToggleCompare={() => toggleCompare(item.id)}
           />
         )}
         ListEmptyComponent={
@@ -375,6 +389,27 @@ export default function ExploreScreen() {
           ) : null
         }
       />
+
+      {/* Floating compare button */}
+      {compareIds.length >= 2 && (
+        <View style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          backgroundColor: '#0F0F0F', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
+          paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24,
+        }}>
+          <TouchableOpacity
+            onPress={() => {
+              const q = encodeURIComponent(compareIds.join(','))
+              router.push(`/compare?ids=${q}`)
+            }}
+            style={{ backgroundColor: '#D4A843', borderRadius: 14, padding: 16, alignItems: 'center' }}
+          >
+            <Text style={{ color: '#0F0F0F', fontWeight: '700', fontSize: 16 }}>
+              ⚖️ השווה {compareIds.length} רכבים
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Filter bottom sheet ────────────────────────────────────────────── */}
       <Modal visible={showFilter} transparent animationType="slide" onRequestClose={() => setShowFilter(false)}>

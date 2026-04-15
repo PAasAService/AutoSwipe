@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowRight, Check, Sparkles, Info,
+  ArrowRight, Check, Sparkles, Info, X,
   TrendingDown, TrendingUp, Minus, Loader2, Wand2,
 } from 'lucide-react'
 import { ISRAELI_CITIES } from '@/lib/constants/cities'
@@ -59,6 +59,7 @@ type FormData = {
   fuelType: FuelType | ''; fuelConsumption: number
   vehicleType: VehicleType | ''; transmission: Transmission
   engineSize: number; color: string; doors: number; seats: number
+  vehicleCategory: 'car' | 'motorcycle' | 'truck'
   insuranceEstimate: number; maintenanceEstimate: number
   depreciationRate: number; description: string; images: UploadedImage[]
 }
@@ -69,6 +70,7 @@ const INITIAL: FormData = {
   fuelType: '', fuelConsumption: 7.0,
   vehicleType: '', transmission: 'AUTOMATIC',
   engineSize: 0, color: '', doors: 4, seats: 5,
+  vehicleCategory: 'car',
   insuranceEstimate: 4800, maintenanceEstimate: 3600,
   depreciationRate: 0.12, description: '', images: [],
 }
@@ -92,6 +94,7 @@ function buildFormFromListing(L: ListingEditorInitial): FormData {
     color: L.color ?? '',
     doors: L.doors ?? 4,
     seats: L.seats ?? 5,
+    vehicleCategory: 'car',
     insuranceEstimate: L.insuranceEstimate,
     maintenanceEstimate: L.maintenanceEstimate,
     depreciationRate: L.depreciationRate,
@@ -174,12 +177,13 @@ export function ListingEditor(props: ListingEditorProps) {
 
     setForm((prev) => ({
       ...prev,
-      brand:       data.brand       || prev.brand,
-      model:       data.model       || prev.model,
-      year:        data.year        || prev.year,
-      fuelType:    data.fuelType    ?? prev.fuelType,
-      color:       data.color       || prev.color,
-      vehicleType: data.vehicleType ?? prev.vehicleType,
+      brand:            data.brand                || prev.brand,
+      model:            data.model                || prev.model,
+      year:             data.year                 || prev.year,
+      fuelType:         data.fuelType             ?? prev.fuelType,
+      color:            data.color                || prev.color,
+      vehicleType:      data.vehicleType          ?? prev.vehicleType,
+      vehicleCategory:  data.vehicleCategory      ?? prev.vehicleCategory,
     }))
 
     // Track which fields were filled for the banner shown on later steps
@@ -418,19 +422,34 @@ export function ListingEditor(props: ListingEditorProps) {
   }
 
   return (
-    <div className="min-h-screen bg-surface-container-lowest px-5 pb-10 pt-12" dir="rtl">
+    <div className="min-h-screen bg-surface-container-lowest px-5 pb-10 pt-4" dir="rtl">
 
       {/* PROGRESS HEADER */}
-      <div className="pb-4">
+      <div className="pb-4 fixed top-0 left-0 right-0 bg-surface-container-lowest/95 backdrop-blur-sm px-5 pt-4 pb-4 z-20" dir="rtl">
         <div className="flex items-center justify-between mb-3">
+          {/* Back button - top right (last in RTL = right side visually) */}
           <button
             onClick={() => step > 0 ? goTo(step - 1) : router.back()}
-            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant"
+            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-outline-variant/20 transition-colors"
             aria-label="חזור"
           >
             <ArrowRight className="w-5 h-5" />
           </button>
+
           <span className="text-on-surface-variant text-sm font-medium">{step + 1} / {STEPS.length}</span>
+
+          {/* Close button (X) - top left (first in RTL = left side visually) */}
+          <button
+            onClick={() => {
+              if (confirm('בטוח שברצונך לצאת מזרימת ההצעה?')) {
+                router.back()
+              }
+            }}
+            className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-outline-variant/20 transition-colors"
+            aria-label="סגור"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="flex gap-1.5">
           {STEPS.map((_, i) => (
@@ -445,17 +464,18 @@ export function ListingEditor(props: ListingEditorProps) {
         </div>
       </div>
 
-      {/* STEP CONTENT */}
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div
-          key={step}
-          custom={direction}
-          initial={{ opacity: 0, x: direction * 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: direction * -30 }}
-          transition={{ duration: 0.22 }}
-          className="space-y-5 mt-2"
-        >
+      {/* STEP CONTENT - with top margin for fixed header */}
+      <div className="mt-24">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            initial={{ opacity: 0, x: direction * 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -30 }}
+            transition={{ duration: 0.22 }}
+            className="space-y-5"
+          >
           <div className="text-right">
             <h2 className="font-headline text-2xl font-bold text-on-surface">{STEPS[step].title}</h2>
             <p className="text-on-surface-variant text-sm mt-0.5">{STEPS[step].subtitle}</p>
@@ -498,7 +518,7 @@ export function ListingEditor(props: ListingEditorProps) {
           )}
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* Step 0 — Brand / Model / Year / Vehicle Type               */}
+          {/* Step 0 — Brand / Model / Year / Type / Color / Engine / Fuel */}
           {/* ═══════════════════════════════════════════════════════════ */}
           {step === 0 && (
             <div className="space-y-5">
@@ -528,10 +548,12 @@ export function ListingEditor(props: ListingEditorProps) {
                 <div className="flex-1 h-px bg-outline-variant/20" />
               </div>
 
+              {/* BRAND - Searchable dropdown with autocomplete */}
               <div>
                 <FieldLabel>מותג הרכב</FieldLabel>
-                <select
-                  className={selectCls}
+                <input
+                  type="text"
+                  placeholder="חפש מותג..."
                   value={form.brand}
                   onChange={(e) => {
                     set('brand', e.target.value)
@@ -539,14 +561,19 @@ export function ListingEditor(props: ListingEditorProps) {
                     lastFetchRef.current = ''
                     setSpecsFilledBy(null)
                   }}
-                >
-                  <option value="">בחר מותג...</option>
-                  {Object.keys(CAR_BRANDS_MODELS).map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
+                  list="brand-list"
+                  className={inputCls}
+                />
+                <datalist id="brand-list">
+                  {Object.keys(CAR_BRANDS_MODELS)
+                    .filter(b => !form.brand || b.includes(form.brand) || b.toLowerCase().includes(form.brand.toLowerCase()))
+                    .map((b) => (
+                      <option key={b} value={b} />
+                    ))}
+                </datalist>
               </div>
 
+              {/* MODEL */}
               {form.brand && (
                 <div>
                   <FieldLabel>דגם</FieldLabel>
@@ -567,6 +594,7 @@ export function ListingEditor(props: ListingEditorProps) {
                 </div>
               )}
 
+              {/* YEAR */}
               <div>
                 <FieldLabel>שנת ייצור</FieldLabel>
                 <select
@@ -585,6 +613,7 @@ export function ListingEditor(props: ListingEditorProps) {
                 </select>
               </div>
 
+              {/* VEHICLE TYPE */}
               <div>
                 <div className="flex items-center justify-between mb-1.5 px-1">
                   <div className="flex items-center gap-1.5 text-xs">
@@ -615,6 +644,43 @@ export function ListingEditor(props: ListingEditorProps) {
                 </select>
               </div>
 
+              {/* COLOR */}
+              <div>
+                <FieldLabel>צבע</FieldLabel>
+                <input
+                  className={inputCls}
+                  value={form.color}
+                  onChange={(e) => set('color', e.target.value)}
+                  placeholder="לדוגמה: לבן, שחור, כסף"
+                />
+              </div>
+
+              {/* ENGINE CAPACITY */}
+              <div>
+                <FieldLabel>נפח מנוע (אופציונלי)</FieldLabel>
+                <input
+                  className={inputCls}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={form.engineSize || ''}
+                  onChange={(e) => set('engineSize', parseFloat(e.target.value) || 0)}
+                  placeholder="לדוגמה: 1.6 (ליטר) או cc"
+                />
+              </div>
+
+              {/* FUEL TYPE */}
+              <div>
+                <FieldLabel>סוג דלק</FieldLabel>
+                <select className={selectCls} value={form.fuelType}
+                  onChange={(e) => set('fuelType', e.target.value)}>
+                  <option value="">בחר סוג דלק...</option>
+                  {Object.entries(FUEL_TYPE_HE).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+
               {form.brand && form.model && !specsLoading && !specsFilledBy && (
                 <div className="flex items-center gap-2 text-xs text-on-surface-variant bg-surface-container rounded-xl px-3 py-2.5">
                   <Sparkles className="w-3.5 h-3.5 text-primary flex-shrink-0" />
@@ -625,7 +691,7 @@ export function ListingEditor(props: ListingEditorProps) {
           )}
 
           {/* ═══════════════════════════════════════════════════════════ */}
-          {/* Step 1 — Condition                                         */}
+          {/* Step 1 — Condition (Category-Aware)                        */}
           {/* ═══════════════════════════════════════════════════════════ */}
           {step === 1 && (
             <div className="space-y-5">
@@ -640,17 +706,6 @@ export function ListingEditor(props: ListingEditorProps) {
               </div>
 
               <div>
-                <FieldLabel>סוג דלק</FieldLabel>
-                <select className={selectCls} value={form.fuelType}
-                  onChange={(e) => set('fuelType', e.target.value)}>
-                  <option value="">בחר סוג דלק...</option>
-                  {Object.entries(FUEL_TYPE_HE).map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <FieldLabel>
                   {form.fuelType === 'ELECTRIC' ? 'צריכת אנרגיה (kWh/100km)' : 'צריכת דלק (ל׳/100 ק"מ)'}
                 </FieldLabel>
@@ -662,38 +717,36 @@ export function ListingEditor(props: ListingEditorProps) {
                 />
               </div>
 
-              <div>
-                <FieldLabel>תיבת הילוכים</FieldLabel>
-                <select className={selectCls} value={form.transmission}
-                  onChange={(e) => set('transmission', e.target.value)}>
-                  {Object.entries(TRANSMISSION_HE).map(([v, l]) => (
-                    <option key={v} value={v}>{l}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Car-only fields (hidden for motorcycles) */}
+              {form.vehicleCategory !== 'motorcycle' && (
+                <>
+                  <div>
+                    <FieldLabel>תיבת הילוכים</FieldLabel>
+                    <select className={selectCls} value={form.transmission}
+                      onChange={(e) => set('transmission', e.target.value)}>
+                      {Object.entries(TRANSMISSION_HE).map(([v, l]) => (
+                        <option key={v} value={v}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <FieldLabel>צבע ומספר דלתות</FieldLabel>
-                <div className="grid grid-cols-2 gap-3">
-                  <input className={inputCls} value={form.color}
-                    onChange={(e) => set('color', e.target.value)}
-                    placeholder="צבע — לדוגמה: לבן" />
-                  <input className={inputCls} type="number" inputMode="numeric"
-                    value={form.doors || ''}
-                    onChange={(e) => set('doors', parseInt(e.target.value) || 4)}
-                    placeholder="מס׳ דלתות" />
-                </div>
-              </div>
+                  <div>
+                    <FieldLabel>מספר דלתות</FieldLabel>
+                    <input className={inputCls} type="number" inputMode="numeric"
+                      value={form.doors || ''}
+                      onChange={(e) => set('doors', parseInt(e.target.value) || 4)}
+                      placeholder="לדוגמה: 4" />
+                  </div>
 
-              <div>
-                <FieldLabel>נפח מנוע (אופציונלי)</FieldLabel>
-                <input
-                  className={inputCls} type="number" inputMode="decimal" step="0.1"
-                  value={form.engineSize || ''}
-                  onChange={(e) => set('engineSize', parseFloat(e.target.value) || 0)}
-                  placeholder="לדוגמה: 1.6 (ליטר)"
-                />
-              </div>
+                  <div>
+                    <FieldLabel>מושבים</FieldLabel>
+                    <input className={inputCls} type="number" inputMode="numeric"
+                      value={form.seats || ''}
+                      onChange={(e) => set('seats', parseInt(e.target.value) || 5)}
+                      placeholder="לדוגמה: 5" />
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -798,16 +851,24 @@ export function ListingEditor(props: ListingEditorProps) {
                 </div>
               )}
 
-              {/* ── Location ── */}
+              {/* ── Location (Searchable Dropdown with Autocomplete) ── */}
               <div>
                 <FieldLabel>מיקום הרכב</FieldLabel>
-                <select className={selectCls} value={form.location}
-                  onChange={(e) => set('location', e.target.value)}>
-                  <option value="">בחר עיר...</option>
-                  {ISRAELI_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  placeholder="חפש עיר או אזור..."
+                  value={form.location}
+                  onChange={(e) => set('location', e.target.value)}
+                  list="locations-list"
+                  className={inputCls}
+                />
+                <datalist id="locations-list">
+                  {ISRAELI_CITIES
+                    .filter(c => !form.location || c.includes(form.location) || c.toLowerCase().includes(form.location.toLowerCase()))
+                    .map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                </datalist>
               </div>
 
               {/* ── Description + AI generator ── */}
@@ -955,8 +1016,9 @@ export function ListingEditor(props: ListingEditorProps) {
               </div>
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       {/* Always-mounted ImageUploader — preserved across step navigation, hidden via CSS when not on step 4 */}
       <div className={step === 4 ? 'mt-2' : 'hidden'}>

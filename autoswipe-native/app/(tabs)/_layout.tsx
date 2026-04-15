@@ -13,9 +13,9 @@ function TabIcon({
   badge?: number
 }) {
   return (
-    <View style={{ alignItems: 'center', gap: 2 }}>
+    <View style={{ alignItems: 'center', justifyContent: 'center', gap: 2, flex: 1 }}>
       <View>
-        <Text style={{ fontSize: 22 }}>{emoji}</Text>
+        <Text style={{ fontSize: 24 }}>{emoji}</Text>
         {badge != null && badge > 0 && (
           <View style={{
             position: 'absolute', top: -4, right: -10,
@@ -30,12 +30,17 @@ function TabIcon({
           </View>
         )}
       </View>
-      <Text style={{
-        fontSize: 10,
-        color: focused ? '#D4A843' : '#888888',
-        fontWeight: focused ? '600' : '400',
-        numberOfLines: 1,
-      } as any}>
+      <Text
+        numberOfLines={1}
+        style={{
+          fontSize: 8,
+          color: focused ? '#D4A843' : '#888888',
+          fontWeight: '400',
+          lineHeight: 10,
+          textAlign: 'center',
+          writingDirection: 'rtl',
+        }}
+      >
         {label}
       </Text>
     </View>
@@ -61,9 +66,9 @@ export default function TabsLayout() {
           backgroundColor: '#1A1A1A',
           borderTopColor: 'rgba(255,255,255,0.08)',
           borderTopWidth: 1,
-          height: 72,
+          height: 92,
           paddingBottom: 8,
-          paddingTop: 6,
+          paddingTop: 10,
         },
         tabBarShowLabel: false,
       }}

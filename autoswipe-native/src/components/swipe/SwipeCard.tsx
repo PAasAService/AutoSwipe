@@ -156,13 +156,18 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
               style={{
                 alignSelf: 'flex-end',
                 backgroundColor: DEAL_TAG_COLORS[card.dealTag],
-                borderRadius: 8,
-                paddingHorizontal: 10,
-                paddingVertical: 4,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
                 marginBottom: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>
                 {DEAL_TAG_LABELS[card.dealTag]}
               </Text>
             </View>
@@ -170,18 +175,20 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
 
           {/* Info chips: verified seller, new listing */}
           {infoChips.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginBottom: 8 }}>
               {infoChips.map((chip) => (
                 <View
                   key={chip}
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    borderRadius: 6,
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    borderRadius: 8,
+                    paddingHorizontal: 10,
+                    paddingVertical: 4,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.3)',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>{chip}</Text>
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{chip}</Text>
                 </View>
               ))}
             </View>

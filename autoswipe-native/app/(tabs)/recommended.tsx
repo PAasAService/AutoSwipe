@@ -611,7 +611,7 @@ export default function RecommendedScreen() {
           <Text style={{ fontSize: 28 }}>⭐</Text>
         </View>
         <Text style={{ color: '#666', fontSize: 12, textAlign: 'right', marginTop: 2 }}>
-          {isSeller ? 'כלים ושירותים למוכרים' : 'הכל שצריך לדעת לפני שקונים'}
+          {isSeller ? 'כאן תוכלו למצוא את ההמלצות הכי שוות שלנו' : 'הכל שצריך לדעת לפני שקונים'}
         </Text>
       </View>
 

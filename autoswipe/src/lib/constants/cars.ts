@@ -91,10 +91,10 @@ export const DEAL_TAG_HE: Record<string, string> = {
 }
 
 export const DEAL_TAG_COLOR: Record<string, string> = {
-  GREAT_DEAL: 'bg-accent text-black',
-  BELOW_MARKET: 'bg-deal-below text-white',
-  FAIR_PRICE: 'bg-surface text-text-secondary',
-  ABOVE_MARKET: 'bg-status-error/20 text-status-error',
-  NEW_LISTING: 'bg-status-info/20 text-status-info',
-  PRICE_DROP: 'bg-status-warning/20 text-status-warning',
+  GREAT_DEAL: 'bg-accent text-black border border-accent font-semibold',
+  BELOW_MARKET: 'bg-status-success/20 text-status-success border border-status-success/30 font-semibold',
+  FAIR_PRICE: 'bg-surface text-text-secondary border border-surface-border/50',
+  ABOVE_MARKET: 'bg-status-error/15 text-status-error border border-status-error/25 font-medium',
+  NEW_LISTING: 'bg-accent/15 text-accent border border-accent/25 font-semibold',
+  PRICE_DROP: 'bg-status-warning/15 text-status-warning border border-status-warning/25 font-semibold',
 }

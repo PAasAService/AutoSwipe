@@ -16,7 +16,7 @@ import { listingImageUri } from '../../../src/lib/listing-image-uri'
 import { useCurrentUser } from '../../../src/hooks/useCurrentUser'
 import type { CarListing } from '../../../src/types'
 import {
-  CAR_BRANDS, FUEL_TYPES, VEHICLE_TYPES,
+  CAR_BRANDS, CAR_MODELS, FUEL_TYPES, VEHICLE_TYPES,
   FUEL_TYPE_LABELS, VEHICLE_TYPE_LABELS, TRANSMISSION_LABELS,
 } from '../../../src/constants/cars'
 import { ISRAELI_CITIES } from '../../../src/constants/cities'
@@ -41,7 +41,7 @@ interface FormData {
   description: string; sellerReason: string
   equipment: string[]
   plateNumber: string; isGovVerified: boolean
-  messagingMode: 'OPEN' | 'SELLER_FIRST'
+  vehicleCategory: 'car' | 'motorcycle' | 'truck'
 }
 
 interface UploadedImage { uri: string; path?: string; uploading: boolean; error?: string }
@@ -73,7 +73,7 @@ export default function CreateListingScreen() {
     description: '', sellerReason: '',
     equipment: [],
     plateNumber: '', isGovVerified: false,
-    messagingMode: 'OPEN',
+    vehicleCategory: 'car',
   })
 
   // Restore draft on mount (create only)
@@ -149,7 +149,7 @@ export default function CreateListingScreen() {
           equipment,
           plateNumber: L.plateNumber ?? '',
           isGovVerified: !!L.isGovVerified,
-          messagingMode: L.listingMessagingMode || L.messagingMode || 'OPEN',
+          vehicleCategory: 'car',
         })
 
         const ordered = [...(L.images ?? [])].sort((a, b) => a.order - b.order)
@@ -195,16 +195,31 @@ export default function CreateListingScreen() {
     setPlateLoading(true)
     try {
       const res = await api.get<any>(`/api/vehicle-lookup?plate=${encodeURIComponent(form.plateNumber.trim())}`)
-      const vehicle = res?.data ?? res
+      const response = res?.data ?? res
+
+      // The API returns { category, data } structure
+      const vehicle = response?.data || response
+      const category = response?.category || 'car'
+
       if (vehicle) {
         setForm((f) => ({
           ...f,
+          // Primary lookup fields (always apply if available)
           brand: vehicle.brand || f.brand,
           model: vehicle.model || f.model,
           year: vehicle.year?.toString() || f.year,
           fuelType: vehicle.fuelType || f.fuelType,
           color: vehicle.color || f.color,
           vehicleType: vehicle.vehicleType || f.vehicleType,
+
+          // Enriched fields (only apply if high-confidence values returned)
+          doors: vehicle.doors?.toString() || f.doors,
+          engineSize: vehicle.engineCapacityCC?.toString() || f.engineSize,
+          seats: vehicle.seats?.toString() || f.seats,
+
+          // Track vehicle category from API
+          vehicleCategory: category as 'car' | 'motorcycle' | 'truck',
+
           isGovVerified: !!vehicle.isGovVerified,
         }))
         Toast.show({ type: 'success', text1: '✓ פרטים אומתו מהרישוי הממשלתי' })
@@ -314,7 +329,6 @@ export default function CreateListingScreen() {
         description: form.description || undefined,
         whySelling: form.sellerReason || undefined,
         equipment: form.equipment.length > 0 ? form.equipment : undefined,
-        listingMessagingMode: form.messagingMode,
         plateNumber: form.plateNumber || undefined,
         isGovVerified: form.isGovVerified,
         images: images.filter((i) => i.path).map((i) => ({ path: i.path! })),
@@ -323,11 +337,10 @@ export default function CreateListingScreen() {
         await api.patch(`/api/listings/${editId}`, payload)
         Toast.show({ type: 'success', text1: 'המודעה עודכנה', visibilityTime: 2500 })
       } else {
-        const { whySelling: _w, listingMessagingMode: _m, equipment: _e, ...createBody } = payload
+        const { whySelling: _w, equipment: _e, ...createBody } = payload
         await api.post('/api/listings', {
           ...createBody,
           sellerReason: form.sellerReason || undefined,
-          messagingMode: form.messagingMode,
         })
         await AsyncStorage.removeItem(DRAFT_KEY)
         Toast.show({ type: 'success', text1: 'המודעה פורסמה! 🎉', visibilityTime: 2500 })
@@ -449,13 +462,36 @@ function StepVehicle({ form, set, plateLoading, onLookup }: any) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {CAR_BRANDS.map((b) => (
-            <SelectChip key={b} label={b} selected={form.brand === b} onPress={() => set('brand', b)} />
+            <SelectChip
+              key={b}
+              label={b}
+              selected={form.brand === b}
+              onPress={() => {
+                set('brand', b)
+                set('model', '')
+              }}
+            />
           ))}
         </View>
       </ScrollView>
 
-      <SectionLabel text="דגם *" />
-      <FieldInput value={form.model} onChange={(v: string) => set('model', v)} placeholder="לדוגמה: Corolla" />
+      {form.brand && (
+        <>
+          <SectionLabel text="דגם *" />
+          <View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(CAR_MODELS[form.brand] || []).map((m) => (
+                  <SelectChip key={m} label={m} selected={form.model === m} onPress={() => set('model', m)} />
+                ))}
+              </View>
+            </ScrollView>
+            {(!CAR_MODELS[form.brand] || CAR_MODELS[form.brand].length === 0) && (
+              <FieldInput value={form.model} onChange={(v: string) => set('model', v)} placeholder="הקלד דגם ידנית" />
+            )}
+          </View>
+        </>
+      )}
 
       <SectionLabel text="שנה *" />
       <FieldInput value={form.year} onChange={(v: string) => set('year', v)} placeholder={CURRENT_YEAR.toString()} keyboardType="numeric" />
@@ -485,31 +521,37 @@ function StepVehicle({ form, set, plateLoading, onLookup }: any) {
 
 // ─────────────────── STEP 1: Details ─────────────────────────────────────────
 function StepDetails({ form, set }: any) {
+  const showCarFields = form.vehicleCategory === 'car'
+
   return (
     <View style={{ gap: 14 }}>
       <SectionLabel text="קילומטרים *" />
       <FieldInput value={form.mileage} onChange={(v: string) => set('mileage', v)} placeholder="לדוגמה: 45000" keyboardType="numeric" />
 
-      <SectionLabel text="תיבת הילוכים" />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {(['AUTOMATIC', 'MANUAL'] as Transmission[]).map((t) => (
-          <SelectChip key={t} label={TRANSMISSION_LABELS[t]} selected={form.transmission === t} onPress={() => set('transmission', t)} />
-        ))}
-      </View>
+      {showCarFields && (
+        <>
+          <SectionLabel text="תיבת הילוכים" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['AUTOMATIC', 'MANUAL'] as Transmission[]).map((t) => (
+              <SelectChip key={t} label={TRANSMISSION_LABELS[t]} selected={form.transmission === t} onPress={() => set('transmission', t)} />
+            ))}
+          </View>
 
-      <SectionLabel text="דלתות" />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {['2', '4', '5'].map((d) => (
-          <SelectChip key={d} label={d} selected={form.doors === d} onPress={() => set('doors', d)} />
-        ))}
-      </View>
+          <SectionLabel text="דלתות" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['2', '4', '5'].map((d) => (
+              <SelectChip key={d} label={d} selected={form.doors === d} onPress={() => set('doors', d)} />
+            ))}
+          </View>
 
-      <SectionLabel text="מושבים" />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {['2', '4', '5', '7'].map((s) => (
-          <SelectChip key={s} label={s} selected={form.seats === s} onPress={() => set('seats', s)} />
-        ))}
-      </View>
+          <SectionLabel text="מושבים" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['2', '4', '5', '7'].map((s) => (
+              <SelectChip key={s} label={s} selected={form.seats === s} onPress={() => set('seats', s)} />
+            ))}
+          </View>
+        </>
+      )}
     </View>
   )
 }
@@ -736,65 +778,6 @@ function StepImages({ form, set, images, onPickImages, onRemoveImage, aiDescLoad
         }}
       />
 
-      {/* Messaging mode */}
-      <SectionLabel text="מצב הודעות" />
-      <Text style={{ color: '#888', fontSize: 13, textAlign: 'right', marginTop: -8 }}>
-        כיצד קונים יוכלו לפנות אליך
-      </Text>
-
-      <TouchableOpacity
-        onPress={() => set('messagingMode', 'OPEN')}
-        style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-          gap: 12, padding: 14, borderRadius: 12, borderWidth: 1.5,
-          borderColor: form.messagingMode === 'OPEN' ? '#D4A843' : 'rgba(255,255,255,0.1)',
-          backgroundColor: form.messagingMode === 'OPEN' ? 'rgba(212,168,67,0.08)' : '#1A1A1A',
-        }}
-      >
-        <View style={{ alignItems: 'flex-end', flex: 1 }}>
-          <Text style={{ color: '#F5F5F5', fontWeight: '600', fontSize: 15 }}>📨 פתוח לפניות</Text>
-          <Text style={{ color: '#888', fontSize: 12, marginTop: 3 }}>
-            קונים שלחצו לייק יכולים לשלוח עד 3 הודעות
-          </Text>
-        </View>
-        <View style={{
-          width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-          borderColor: form.messagingMode === 'OPEN' ? '#D4A843' : '#555',
-          backgroundColor: form.messagingMode === 'OPEN' ? '#D4A843' : 'transparent',
-          justifyContent: 'center', alignItems: 'center',
-        }}>
-          {form.messagingMode === 'OPEN' && (
-            <Text style={{ color: '#0F0F0F', fontSize: 11, fontWeight: '900' }}>✓</Text>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => set('messagingMode', 'SELLER_FIRST')}
-        style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-          gap: 12, padding: 14, borderRadius: 12, borderWidth: 1.5,
-          borderColor: form.messagingMode === 'SELLER_FIRST' ? '#D4A843' : 'rgba(255,255,255,0.1)',
-          backgroundColor: form.messagingMode === 'SELLER_FIRST' ? 'rgba(212,168,67,0.08)' : '#1A1A1A',
-        }}
-      >
-        <View style={{ alignItems: 'flex-end', flex: 1 }}>
-          <Text style={{ color: '#F5F5F5', fontWeight: '600', fontSize: 15 }}>🔒 אני יוזם</Text>
-          <Text style={{ color: '#888', fontSize: 12, marginTop: 3 }}>
-            רק אתה יכול להתחיל שיחה עם קונים
-          </Text>
-        </View>
-        <View style={{
-          width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-          borderColor: form.messagingMode === 'SELLER_FIRST' ? '#D4A843' : '#555',
-          backgroundColor: form.messagingMode === 'SELLER_FIRST' ? '#D4A843' : 'transparent',
-          justifyContent: 'center', alignItems: 'center',
-        }}>
-          {form.messagingMode === 'SELLER_FIRST' && (
-            <Text style={{ color: '#0F0F0F', fontSize: 11, fontWeight: '900' }}>✓</Text>
-          )}
-        </View>
-      </TouchableOpacity>
     </View>
   )
 }

@@ -139,6 +139,7 @@ export interface BuyerPreferences {
   preferredBrands: string[]
   preferredModels: string[]
   fuelPreferences: FuelType[]
+  transmissionPreferences: Transmission[]
   vehicleTypes: VehicleType[]
   location: string
   searchRadius: number

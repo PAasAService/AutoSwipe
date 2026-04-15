@@ -6,22 +6,25 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
-  Share,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { goBackSafe } from '../../src/lib/go-back-safe'
 import { BackOverlayCircle } from '../../src/components/ui/BackHeaderButton'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import ShareButton from '../../src/components/ui/ShareButton'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { api } from '../../src/lib/api'
 import { listingImageUri } from '../../src/lib/listing-image-uri'
 import { useFavorites, useToggleFavorite } from '../../src/hooks/useFavorites'
 import { useCurrentUser } from '../../src/hooks/useCurrentUser'
+import { useSwipeStore } from '../../src/store/swipe'
 import { CarListing } from '../../src/types'
 import { formatILS, formatMileage, formatNumber, formatDate } from '../../src/lib/utils/format'
 import { FUEL_TYPE_LABELS, VEHICLE_TYPE_LABELS, TRANSMISSION_LABELS, DEAL_TAG_LABELS, DEAL_TAG_COLORS } from '../../src/constants/cars'
 import { calculateCostBreakdown } from '../../src/lib/utils/cost-calculator'
+import { queryKeys } from '../../src/lib/query-keys'
+import * as Haptics from 'expo-haptics'
 import Toast from 'react-native-toast-message'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -37,13 +40,42 @@ export default function ListingDetailScreen() {
   const insets = useSafeAreaInsets()
   const { data: me } = useCurrentUser()
   const { data: favorites } = useFavorites()
-  const toggleFavorite = useToggleFavorite()
+  const qc = useQueryClient()
+  const { swipe: storeSwipe } = useSwipeStore()
 
   const [imageIndex, setImageIndex] = useState(0)
 
   const { data: listing, isLoading } = useQuery({
     queryKey: ['listing', id],
     queryFn: () => api.get<{ data: CarListing }>(`/api/listings/${id}`).then((r) => r.data ?? r as any),
+  })
+
+  // Like action: triggers same behavior as RIGHT swipe on Swipe deck
+  // Calls /api/swipes endpoint, updates swipe store index, and navigates back
+  const likeSwipe = useMutation({
+    mutationFn: () =>
+      api.post('/api/swipes', { listingId: id, direction: 'RIGHT' }),
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      Toast.show({
+        type: 'success',
+        text1: 'נשמר במועדפים! ❤️',
+        visibilityTime: 2200,
+      })
+      // Invalidate favorites query to refresh favorites list
+      qc.invalidateQueries({ queryKey: queryKeys.favorites() })
+      // Update swipe store to skip this card on Swipe deck
+      storeSwipe('RIGHT')
+      // Navigate back to previous screen (usually Swipe deck)
+      goBackSafe()
+    },
+    onError: (err: any) => {
+      Toast.show({
+        type: 'error',
+        text1: err instanceof Error ? err.message : 'שגיאה בשמירה',
+        visibilityTime: 3000,
+      })
+    },
   })
 
   const startThread = useMutation({
@@ -322,22 +354,33 @@ export default function ListingDetailScreen() {
           borderTopColor: 'rgba(255,255,255,0.08)',
           backgroundColor: '#0F0F0F',
         }}>
-          <TouchableOpacity
-            onPress={() => Share.share({ message: `בדוק את הרכב הזה: ${listing.brand} ${listing.model} ${listing.year} - ${formatILS(listing.price)}` })}
-            style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: '#1A1A1A', justifyContent: 'center', alignItems: 'center' }}
-          >
-            <Text style={{ fontSize: 20 }}>↗</Text>
-          </TouchableOpacity>
+          {/* Share button: includes real public URL for sharing */}
+          <ShareButton
+            variant="listing"
+            listingId={listing.id}
+            title={`${listing.brand} ${listing.model} ${listing.year}`}
+            price={listing.price}
+            size={48}
+          />
 
+          {/* Like button: now triggers swipe RIGHT behavior (removes from deck) */}
           <TouchableOpacity
-            onPress={() => toggleFavorite.mutate({ listingId: listing.id, isFavorited })}
+            onPress={() => likeSwipe.mutate()}
+            disabled={likeSwipe.isPending}
             style={{
               width: 48, height: 48, borderRadius: 12,
-              backgroundColor: isFavorited ? 'rgba(244,67,54,0.15)' : '#1A1A1A',
+              backgroundColor: isFavorited ? 'rgba(244,67,54,0.25)' : 'rgba(244,67,54,0.1)',
+              borderWidth: isFavorited ? 1.5 : 0,
+              borderColor: 'rgba(244,67,54,0.5)',
               justifyContent: 'center', alignItems: 'center',
+              opacity: likeSwipe.isPending ? 0.6 : 1,
             }}
           >
-            <Text style={{ fontSize: 20 }}>{isFavorited ? '❤️' : '🤍'}</Text>
+            {likeSwipe.isPending ? (
+              <ActivityIndicator size="small" color="#F44336" />
+            ) : (
+              <Text style={{ fontSize: 20 }}>{isFavorited ? '❤️' : '🤍'}</Text>
+            )}
           </TouchableOpacity>
 
           {listing.messagingMode === 'SELLER_FIRST' ? (

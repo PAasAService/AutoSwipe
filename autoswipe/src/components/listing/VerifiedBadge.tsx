@@ -15,12 +15,12 @@ export function VerifiedBadge({ size = 'md', className }: VerifiedBadgeProps) {
     return (
       <span
         className={clsx(
-          'inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-400',
-          'border border-emerald-500/30 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+          'inline-flex items-center gap-1.5 bg-status-success/15 text-status-success',
+          'border border-status-success/30 rounded-lg px-2.5 py-1 text-xs font-semibold',
           className,
         )}
       >
-        <ShieldCheck className="w-3 h-3 flex-shrink-0" />
+        <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
         רכב מאומת
       </span>
     )

@@ -14,10 +14,10 @@ export default async function SwipePage() {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-80px)]" dir="rtl">
-      {/* Header — bell physical top-left; settings physical top-right */}
+      {/* Header — centered title with bell and settings as absolute positioned elements */}
       <header className="relative flex items-center justify-center px-5 py-4 flex-shrink-0 min-h-[56px]">
         <NotificationBell className="absolute left-5 top-1/2 -translate-y-1/2 z-10" />
-        <span className="text-accent font-black text-xl tracking-tight">AutoSwipe</span>
+        <h1 className="text-text-primary font-black text-2xl tracking-tight">AutoSwipe</h1>
         <Link
           href="/settings"
           aria-label="הגדרות"

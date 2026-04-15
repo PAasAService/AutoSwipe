@@ -34,6 +34,7 @@ export interface PlateAutoFillResult {
   fuelType:       FuelType | null
   color:          string
   vehicleType:    VehicleType | null
+  vehicleCategory?: 'car' | 'motorcycle' | 'truck'
   ownershipType:  string
   trimLevel:      string
   pollutionGroup: number | null
@@ -167,7 +168,10 @@ export default function LicensePlateLookup({
         return
       }
 
-      const data: PlateAutoFillResult = json.data
+      const data: PlateAutoFillResult = {
+        ...json.data,
+        vehicleCategory: json.category
+      }
 
       // ── Mismatch detection ───────────────────────────────────────────────
       // Only check fields the seller has explicitly filled in.

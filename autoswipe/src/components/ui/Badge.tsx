@@ -43,15 +43,15 @@ interface DealBadgeProps {
 }
 
 export function DealBadge({ tag, size = 'sm' }: DealBadgeProps) {
-  const colorClass = DEAL_TAG_COLOR[tag] ?? 'bg-surface text-text-secondary'
+  const colorClass = DEAL_TAG_COLOR[tag] ?? 'bg-surface text-text-secondary border border-surface-border/50'
   const label = DEAL_TAG_HE[tag] ?? tag
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full font-semibold',
+        'inline-flex items-center rounded-lg gap-1',
         colorClass,
-        size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1'
+        size === 'sm' ? 'text-xs px-2.5 py-1' : 'text-sm px-3 py-1.5'
       )}
     >
       {label}
@@ -67,19 +67,19 @@ interface MatchScoreProps {
 
 export function MatchScoreBadge({ score, size = 'md' }: MatchScoreProps) {
   const color =
-    score >= 80 ? 'text-status-success border-status-success/40 bg-status-success/10' :
-    score >= 60 ? 'text-accent border-accent/40 bg-accent/10' :
-    score >= 40 ? 'text-status-warning border-status-warning/40 bg-status-warning/10' :
-    'text-text-muted border-surface-border bg-surface'
+    score >= 80 ? 'text-status-success border-status-success/35 bg-status-success/12 font-bold' :
+    score >= 60 ? 'text-accent border-accent/35 bg-accent/12 font-bold' :
+    score >= 40 ? 'text-status-warning border-status-warning/35 bg-status-warning/12 font-semibold' :
+    'text-text-muted border-surface-border/50 bg-surface font-medium'
 
   const sizes = {
-    sm: 'text-xs px-2 py-0.5',
-    md: 'text-sm px-3 py-1',
-    lg: 'text-base px-4 py-1.5',
+    sm: 'text-xs px-2.5 py-1',
+    md: 'text-sm px-3 py-1.5',
+    lg: 'text-base px-4 py-2',
   }
 
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-full font-bold border', color, sizes[size])}>
+    <span className={cn('inline-flex items-center gap-1.5 rounded-lg border', color, sizes[size])}>
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
       {score}% התאמה
     </span>

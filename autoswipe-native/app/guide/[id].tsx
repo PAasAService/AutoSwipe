@@ -4,15 +4,29 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Share,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
 import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
 import { useReturnTo } from '../../src/hooks/useReturnTo'
 import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
+import ShareButton from '../../src/components/ui/ShareButton'
 import { SCREEN_EDGE } from '../../src/constants/layout'
 import { GUIDE_ITEMS, GuideBlock } from '../../src/data/recommended'
+import { SCREEN_HEADER_BORDER } from '../../src/constants/layout'
+import { BACK_ICON_ONLY, BACK_ICON_ONLY_SIZE } from '../../src/constants/ui'
+
+/**
+ * Build guide share message, handling optional subtitle safely.
+ * If subtitle is missing/null/empty, only include title.
+ * Otherwise, include title and subtitle on separate lines.
+ */
+function buildGuideShareMessage(title: string, subtitle?: string | null): string {
+  if (!subtitle || subtitle.trim() === '') {
+    return title
+  }
+  return `${title}\n${subtitle}`
+}
 
 function BlockRenderer({ block }: { block: GuideBlock }) {
   switch (block.type) {
@@ -187,6 +201,7 @@ function BlockRenderer({ block }: { block: GuideBlock }) {
 export default function GuideScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const returnTo = useReturnTo()
+  const insets = useSafeAreaInsets()
   const guide = GUIDE_ITEMS.find((g) => g.id === id)
 
   if (!guide || !guide.content) {
@@ -205,24 +220,48 @@ export default function GuideScreen() {
     )
   }
 
-  async function handleShare() {
-    try {
-      await Share.share({ message: `${guide!.title}\n${guide!.subtitle}` })
-    } catch {}
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
-      <ScreenHeader
-        mode="edges"
-        onBack={() => goBackSafeWithReturn(returnTo, '/(tabs)/recommended')}
-        backVariant="labeled"
-        trailing={(
-          <TouchableOpacity onPress={handleShare} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={{ fontSize: 20 }}>🔗</Text>
-          </TouchableOpacity>
-        )}
-      />
+      {/* Custom header: Share on left, Back on right (RTL-correct, part of header structure, not floating) */}
+      <View
+        style={{
+          backgroundColor: '#0F0F0F',
+          borderBottomWidth: 1,
+          borderBottomColor: SCREEN_HEADER_BORDER,
+          paddingTop: insets.top + 8,
+          paddingBottom: 12,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        {/* Share button: LEFT */}
+        <ShareButton
+          variant="custom"
+          message={buildGuideShareMessage(guide!.title, guide?.subtitle)}
+          size={48}
+        />
+
+        {/* Back button: RIGHT — styled like BackOverlayCircle (circular dark) but in header, not floating */}
+        <TouchableOpacity
+          onPress={() => goBackSafeWithReturn(returnTo, '/(tabs)/recommended')}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="חזור"
+        >
+          <Text style={{ color: '#F5F5F5', fontSize: BACK_ICON_ONLY_SIZE }}>
+            {BACK_ICON_ONLY}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}
