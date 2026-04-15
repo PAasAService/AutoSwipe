@@ -26,9 +26,9 @@ CREATE TABLE "new_MessageThread" (
 INSERT INTO "new_MessageThread" ("buyerId", "buyerMessageCount", "buyerUnread", "createdAt", "id", "lastMessage", "lastMessageAt", "listingId", "openBuyerCapCleared", "sellerId", "sellerStartedChat", "sellerUnread", "updatedAt", "waitlistNotified") SELECT "buyerId", "buyerMessageCount", "buyerUnread", "createdAt", "id", "lastMessage", "lastMessageAt", "listingId", "openBuyerCapCleared", "sellerId", "sellerStartedChat", "sellerUnread", "updatedAt", "waitlistNotified" FROM "MessageThread";
 DROP TABLE "MessageThread";
 ALTER TABLE "new_MessageThread" RENAME TO "MessageThread";
-CREATE INDEX "MessageThread_buyerId_idx" ON "MessageThread"("buyerId");
-CREATE INDEX "MessageThread_sellerId_idx" ON "MessageThread"("sellerId");
-CREATE UNIQUE INDEX "MessageThread_buyerId_sellerId_listingId_key" ON "MessageThread"("buyerId", "sellerId", "listingId");
+CREATE INDEX IF NOT EXISTS "MessageThread_buyerId_idx" ON "MessageThread"("buyerId");
+CREATE INDEX IF NOT EXISTS "MessageThread_sellerId_idx" ON "MessageThread"("sellerId");
+CREATE UNIQUE INDEX IF NOT EXISTS "MessageThread_buyerId_sellerId_listingId_key" ON "MessageThread"("buyerId", "sellerId", "listingId");
 CREATE TABLE "new_User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "email" TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE "new_User" (
 INSERT INTO "new_User" ("avatarUrl", "createdAt", "email", "emailFrequency", "emailNotifications", "hasCompletedCarousel", "id", "isOnboarded", "isVerified", "lastActiveAt", "messagingMode", "name", "notificationPrefs", "passwordHash", "phone", "phoneVerified", "pushNotifications", "roles", "termsAcceptedAt", "updatedAt") SELECT "avatarUrl", "createdAt", "email", "emailFrequency", "emailNotifications", "hasCompletedCarousel", "id", "isOnboarded", "isVerified", "lastActiveAt", "messagingMode", "name", "notificationPrefs", "passwordHash", "phone", "phoneVerified", "pushNotifications", "roles", "termsAcceptedAt", "updatedAt" FROM "User";
 DROP TABLE "User";
 ALTER TABLE "new_User" RENAME TO "User";
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-CREATE INDEX "User_email_idx" ON "User"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE INDEX IF NOT EXISTS "User_email_idx" ON "User"("email");
 PRAGMA foreign_keys=ON;
 PRAGMA defer_foreign_keys=OFF;

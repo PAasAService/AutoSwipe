@@ -7,4 +7,4 @@ WHERE "rowid" IN (
   INNER JOIN "User" AS "u3" ON "u2"."name" = "u3"."name" AND "u2"."id" > "u3"."id"
 );
 
-CREATE UNIQUE INDEX "User_name_key" ON "User"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_name_key" ON "User"("name");
