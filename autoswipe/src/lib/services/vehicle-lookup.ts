@@ -245,6 +245,63 @@ async function fetchFromGov(plate: string): Promise<VehicleLookupResult | null> 
   }
 }
 
+// ─── Internal type for enrichment matching ────────────────────────────────────
+
+export interface VehicleEnrichmentIds {
+  tozeret_cd: number
+  degem_cd: number
+  shnat_yitzur: number
+}
+
+// ─── Extended result for internal use ──────────────────────────────────────────
+
+interface FetchedVehicleInternal {
+  result: VehicleLookupResult
+  enrichmentIds: VehicleEnrichmentIds
+}
+
+// ─── Core fetch with enrichment IDs ────────────────────────────────────────────
+
+async function fetchFromGovWithIds(plate: string): Promise<FetchedVehicleInternal | null> {
+  const filters  = JSON.stringify({ mispar_rechev: parseInt(plate, 10) })
+  const url      = `${GOV_API}?resource_id=${RESOURCE}&filters=${encodeURIComponent(filters)}&limit=1`
+
+  const controller = new AbortController()
+  const timer      = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' },
+      next: { revalidate: 3600 },
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json()
+
+    if (!json?.success || !json?.result?.records?.length) return null
+
+    const record = json.result.records[0] as GovVehicleRecord
+
+    return {
+      result: mapRecord(record),
+      enrichmentIds: {
+        tozeret_cd: record.tozeret_cd,
+        degem_cd: record.degem_cd,
+        shnat_yitzur: record.shnat_yitzur,
+      },
+    }
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name !== 'AbortError') {
+      console.error('[vehicle-lookup] fetch error:', err.message)
+    }
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -259,12 +316,24 @@ export async function fetchVehicleByPlate(
 ): Promise<VehicleLookupResult | null> {
   const plate = normaliseplate(rawPlate)
 
-  // Serve from cache first
   if (cache.has(plate)) {
     return cache.get(plate) ?? null
   }
 
-  const result = await fetchFromGov(plate)
+  const vehicle = await fetchFromGovWithIds(plate)
+  const result = vehicle?.result ?? null
   cache.set(plate, result)
   return result
+}
+
+/**
+ * Internal-only: Fetch vehicle with enrichment IDs for secondary dataset matching.
+ * @param rawPlate - plate number, may include dashes or spaces
+ * @returns Vehicle data + enrichment identifiers, or null
+ */
+export async function fetchVehicleWithEnrichmentIds(
+  rawPlate: string,
+): Promise<FetchedVehicleInternal | null> {
+  const plate = normaliseplate(rawPlate)
+  return fetchFromGovWithIds(plate)
 }

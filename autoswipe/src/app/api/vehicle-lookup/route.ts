@@ -1,75 +1,68 @@
 /**
  * GET /api/vehicle-lookup?plate=<plate_number>
  * ──────────────────────────────────────────────────────────────────────────
- * Server-side proxy for the Israeli Government vehicle data API.
- * Keeping the call on the server means:
- *   - No CORS issues
- *   - No credentials exposed to the browser
- *   - Next.js fetch cache handles deduplication + revalidation
+ * Unified vehicle lookup endpoint.
+ * Queries car and motorcycle datasets in parallel.
+ * Returns deterministic category + vehicle data.
+ *
+ * Response always has same shape:
+ * { category: 'car' | 'motorcycle' | 'truck', data: UnifiedVehicle | null }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  fetchVehicleByPlate,
-  validateIsraeliPlate,
-  normaliseplate,
-} from '@/lib/services/vehicle-lookup'
+import { lookupVehicleByPlate } from '@/lib/services/vehicle-lookup-orchestrator'
+
+/**
+ * Validate Israeli license plate format (7-8 digits)
+ */
+function validateIsraeliPlate(plate: string): boolean {
+  const cleaned = plate.replace(/[^\d]/g, '')
+  return cleaned.length === 7 || cleaned.length === 8
+}
 
 export async function GET(req: NextRequest) {
   const plate = req.nextUrl.searchParams.get('plate') ?? ''
 
-  // ── Basic presence check ──────────────────────────────────────────────────
+  // ── Validate presence ────────────────────────────────────────────────────
   if (!plate.trim()) {
     return NextResponse.json(
-      { error: 'מספר רכב חסר' },
-      { status: 400 },
+      { error: 'Plate required' },
+      { status: 400 }
     )
   }
 
-  // ── Format validation ────────────────────────────────────────────────────
+  // ── Validate format ─────────────────────────────────────────────────────
   if (!validateIsraeliPlate(plate)) {
     return NextResponse.json(
-      { error: 'מספר הרכב אינו תקין. יש להזין 7 או 8 ספרות.' },
-      { status: 422 },
+      { error: 'Invalid plate format (7-8 digits)' },
+      { status: 422 }
     )
   }
 
-  const cleaned = normaliseplate(plate)
+  try {
+    const result = await lookupVehicleByPlate(plate)
 
-  // ── Lookup ───────────────────────────────────────────────────────────────
-  const result = await fetchVehicleByPlate(cleaned)
-
-  if (!result) {
+    // ── Return consistent response shape ────────────────────────────────
     return NextResponse.json(
-      { error: 'לא נמצאו פרטים עבור מספר הרכב הזה' },
-      { status: 404 },
+      {
+        category: result.category,
+        data: result.data,
+      },
+      {
+        headers: {
+          // No caching - always get fresh data
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      }
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    console.error('[vehicle-lookup] Orchestration failed:', message)
+
+    // Service unavailable (both datasets failed)
+    return NextResponse.json(
+      { error: 'Vehicle lookup service unavailable' },
+      { status: 503 }
     )
   }
-
-  // ── Strip any fields that might carry personal data ───────────────────────
-  // (VIN / chassis number and licence-expiry are not in VehicleLookupResult,
-  // but be explicit for safety.)
-  const safe = {
-    brand:          result.brand,
-    model:          result.model,
-    year:           result.year,
-    fuelType:       result.fuelType,
-    color:          result.color,
-    ownershipType:  result.ownershipType,
-    trimLevel:      result.trimLevel,
-    vehicleType:    result.vehicleType,
-    pollutionGroup: result.pollutionGroup,
-    safetyRating:   result.safetyRating,
-    firstRoadDate:  result.firstRoadDate,
-  }
-
-  return NextResponse.json(
-    { data: safe },
-    {
-      headers: {
-        // Allow client-side cache for 1 hour (same plate → same car)
-        'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
-      },
-    },
-  )
 }

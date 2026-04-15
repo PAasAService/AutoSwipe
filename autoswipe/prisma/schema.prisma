@@ -117,6 +117,7 @@ model BuyerPreferences {
   preferredBrands String   @default("[]")
   preferredModels String   @default("[]")
   fuelPreferences String   @default("[]")
+  transmissionPreferences String @default("[]")
   vehicleTypes    String   @default("[]")
   location        String   @default("")
   searchRadius    Int      @default(50)

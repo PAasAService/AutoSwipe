@@ -117,5 +117,25 @@ export async function DELETE(req: NextRequest) {
   // history must not be overwritten.
   await updateLearnedSignals(user.id, listingId, 'SWIPE_LEFT')
 
+  // ── Track removal in userBehavior for future undo/recovery features ──────────
+  // This distinguishes "removed from favorites" from "direct LEFT swipe" so we can
+  // support future "Show me skipped listings" or premium undo features. The actual
+  // negative signal is still SWIPE_LEFT (same as direct skip), but the source
+  // (REMOVE_FROM_FAVORITES vs SWIPE_LEFT) is now queryable for future UX.
+  // Status: Infrastructure only — no visible undo UI yet.
+  try {
+    await prisma.userBehavior.create({
+      data: {
+        userId: user.id,
+        listingId,
+        action: 'REMOVE_FROM_FAVORITES',
+      },
+    })
+  } catch (err) {
+    // Non-critical: if this fails, the negative signal was already sent and
+    // the favorite was deleted. Log but don't break the response.
+    console.warn('[api/favorites DELETE] userBehavior.create failed:', err)
+  }
+
   return NextResponse.json({ message: 'הוסר מהמועדפים' })
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { goBackSafeWithReturn, hrefWithReturn } from '../../src/lib/go-back-safe'
 import { useReturnTo } from '../../src/hooks/useReturnTo'
@@ -15,12 +15,13 @@ import { CarListing } from '../../src/types'
 import { formatILS, formatMileage } from '../../src/lib/utils/format'
 import { FUEL_TYPE_LABELS } from '../../src/constants/cars'
 import Skeleton from '../../src/components/ui/Skeleton'
-import { ScreenHeader } from '../../src/components/ui/ScreenHeader'
-import { SCREEN_EDGE } from '../../src/constants/layout'
+import { SCREEN_EDGE, SCREEN_HEADER_BORDER } from '../../src/constants/layout'
+import { BACK_ICON_ONLY, BACK_ICON_ONLY_SIZE } from '../../src/constants/ui'
 
 export default function FavoritesScreen() {
   const router = useRouter()
   const returnTo = useReturnTo()
+  const insets = useSafeAreaInsets()
 
   const { data: favorites, isLoading, isError, error } = useFavorites()
   const removeFavorite = useRemoveFavorite()
@@ -64,7 +65,53 @@ export default function FavoritesScreen() {
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
-        <ScreenHeader onBack={handleFavoritesBack} title="המועדפים שלי ❤️" titleSize={22} />
+        {/* Custom header with back button on RIGHT (RTL-correct) */}
+        <View
+          style={{
+            backgroundColor: '#0F0F0F',
+            borderBottomWidth: 1,
+            borderBottomColor: SCREEN_HEADER_BORDER,
+            paddingTop: insets.top + 8,
+            paddingBottom: 12,
+            paddingHorizontal: SCREEN_EDGE,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          {/* Spacer: LEFT */}
+          <View style={{ width: 44 }} />
+
+          {/* Title: CENTER */}
+          <Text style={{
+            fontSize: 22,
+            fontWeight: '800',
+            color: '#F5F5F5',
+            textAlign: 'center',
+            writingDirection: 'rtl',
+          }}>
+            המועדפים שלי ❤️
+          </Text>
+
+          {/* Back button: RIGHT */}
+          <TouchableOpacity
+            onPress={handleFavoritesBack}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="חזור"
+          >
+            <Text style={{ color: '#F5F5F5', fontSize: BACK_ICON_ONLY_SIZE }}>
+              {BACK_ICON_ONLY}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View style={{ paddingHorizontal: SCREEN_EDGE, paddingTop: 12 }}>
           <Skeleton width={180} height={28} borderRadius={8} />
           <View style={{ marginTop: 8 }}>
@@ -91,7 +138,53 @@ export default function FavoritesScreen() {
   if (!favorites?.length) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
-        <ScreenHeader onBack={handleFavoritesBack} title="המועדפים שלי ❤️" titleSize={22} />
+        {/* Custom header with back button on RIGHT (RTL-correct) */}
+        <View
+          style={{
+            backgroundColor: '#0F0F0F',
+            borderBottomWidth: 1,
+            borderBottomColor: SCREEN_HEADER_BORDER,
+            paddingTop: insets.top + 8,
+            paddingBottom: 12,
+            paddingHorizontal: SCREEN_EDGE,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          {/* Spacer: LEFT */}
+          <View style={{ width: 44 }} />
+
+          {/* Title: CENTER */}
+          <Text style={{
+            fontSize: 22,
+            fontWeight: '800',
+            color: '#F5F5F5',
+            textAlign: 'center',
+            writingDirection: 'rtl',
+          }}>
+            המועדפים שלי ❤️
+          </Text>
+
+          {/* Back button: RIGHT */}
+          <TouchableOpacity
+            onPress={handleFavoritesBack}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="חזור"
+          >
+            <Text style={{ color: '#F5F5F5', fontSize: BACK_ICON_ONLY_SIZE }}>
+              {BACK_ICON_ONLY}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <Text style={{ fontSize: 64, marginBottom: 16 }}>❤️</Text>
           <Text style={{ color: '#F5F5F5', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
@@ -113,19 +206,73 @@ export default function FavoritesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
-      <ScreenHeader
-        onBack={handleFavoritesBack}
-        title="המועדפים שלי ❤️"
-        titleSize={22}
-        subtitle={`${favorites.length} רכבים שמורים`}
-        below={
-          compareIds.length >= 2 ? (
-            <Text style={{ color: '#D4A843', textAlign: 'center', fontSize: 13, writingDirection: 'rtl' }}>
-              בחר עד 3 רכבים להשוואה
-            </Text>
-          ) : undefined
-        }
-      />
+      {/* Custom header with back button on RIGHT (RTL-correct) */}
+      <View
+        style={{
+          backgroundColor: '#0F0F0F',
+          borderBottomWidth: 1,
+          borderBottomColor: SCREEN_HEADER_BORDER,
+          paddingTop: insets.top + 8,
+          paddingBottom: 12,
+          paddingHorizontal: SCREEN_EDGE,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        {/* Spacer: LEFT */}
+        <View style={{ width: 44 }} />
+
+        {/* Title + Subtitle: CENTER */}
+        <View style={{ justifyContent: 'center', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <Text style={{
+            fontSize: 22,
+            fontWeight: '800',
+            color: '#F5F5F5',
+            textAlign: 'center',
+            writingDirection: 'rtl',
+          }}>
+            המועדפים שלי ❤️
+          </Text>
+          <Text style={{
+            fontSize: 12,
+            color: '#888888',
+            textAlign: 'center',
+            marginTop: 2,
+            writingDirection: 'rtl',
+          }}>
+            {favorites.length} רכבים שמורים
+          </Text>
+        </View>
+
+        {/* Back button: RIGHT */}
+        <TouchableOpacity
+          onPress={handleFavoritesBack}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="חזור"
+        >
+          <Text style={{ color: '#F5F5F5', fontSize: BACK_ICON_ONLY_SIZE }}>
+            {BACK_ICON_ONLY}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Below header: Comparison hint */}
+      {compareIds.length >= 2 && (
+        <View style={{ paddingHorizontal: SCREEN_EDGE, paddingVertical: 12 }}>
+          <Text style={{ color: '#D4A843', textAlign: 'center', fontSize: 13, writingDirection: 'rtl' }}>
+            בחר עד 3 רכבים להשוואה
+          </Text>
+        </View>
+      )}
 
       <FlatList
         data={favorites}

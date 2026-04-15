@@ -15,9 +15,11 @@ interface Props {
   isFavorited: boolean
   onPress: () => void
   onToggleFavorite: () => void
+  isSelected?: boolean
+  onToggleCompare?: () => void
 }
 
-export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorite }: Props) {
+export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorite, isSelected = false, onToggleCompare }: Props) {
   const primaryImage = car.images.find((i) => i.isPrimary) || car.images[0]
   const costs = calculateCostBreakdown(
     car.price,
@@ -39,8 +41,8 @@ export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorit
         backgroundColor: '#1A1A1A',
         borderRadius: 14,
         overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.07)',
+        borderWidth: isSelected ? 2 : 1,
+        borderColor: isSelected ? '#D4A843' : 'rgba(255,255,255,0.07)',
       }}
     >
       {/* Image */}
@@ -82,6 +84,29 @@ export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorit
         >
           <Text style={{ fontSize: 14 }}>{isFavorited ? '❤️' : '🤍'}</Text>
         </TouchableOpacity>
+
+        {/* Compare checkbox — top right (only if onToggleCompare provided) */}
+        {onToggleCompare && (
+          <TouchableOpacity
+            onPress={onToggleCompare}
+            hitSlop={{ top: 8, left: 8, bottom: 8, right: 8 }}
+            style={{
+              position: 'absolute',
+              top: 7,
+              right: 7,
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: isSelected ? 'rgba(212,168,67,0.8)' : 'rgba(0,0,0,0.55)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: isSelected ? 0 : 1.5,
+              borderColor: 'rgba(255,255,255,0.3)',
+            }}
+          >
+            <Text style={{ fontSize: 14 }}>{isSelected ? '✓' : '⚖️'}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Deal tag — bottom right */}
         {tagLabel && (

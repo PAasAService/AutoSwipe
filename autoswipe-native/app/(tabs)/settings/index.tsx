@@ -129,7 +129,6 @@ export default function SettingsScreen() {
           label="המועדפים שלי"
           onPress={() => router.push(hrefWithReturn('/(tabs)/favorites', 'settings'))}
         />
-        <MenuItem emoji="⚖️" label="השוואת רכבים" onPress={() => router.push(hrefWithReturn('/compare', 'settings'))} />
         <MenuItem emoji="🚗" label="המודעות שלי" onPress={() => router.push(hrefWithReturn('/(tabs)/dashboard', 'settings'))} />
 
         <View style={{ height: 20 }} />

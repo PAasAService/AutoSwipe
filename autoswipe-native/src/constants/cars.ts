@@ -43,12 +43,12 @@ export const DEAL_TAG_LABELS: Record<DealTag, string> = {
 }
 
 export const DEAL_TAG_COLORS: Record<DealTag, string> = {
-  GREAT_DEAL: '#4CAF50',
-  BELOW_MARKET: '#8BC34A',
-  FAIR_PRICE: '#D4A843',
-  ABOVE_MARKET: '#F44336',
-  NEW_LISTING: '#2196F3',
-  PRICE_DROP: '#FF9800',
+  GREAT_DEAL: '#10B981',
+  BELOW_MARKET: '#06B6D4',
+  FAIR_PRICE: '#FFB81C',
+  ABOVE_MARKET: '#EF4444',
+  NEW_LISTING: '#3B82F6',
+  PRICE_DROP: '#F97316',
 }
 
 export const CAR_MODELS: Record<string, string[]> = {
@@ -96,4 +96,8 @@ export const VEHICLE_TYPES: VehicleType[] = [
 
 export const FUEL_TYPES: FuelType[] = [
   'GASOLINE', 'HYBRID', 'ELECTRIC', 'DIESEL', 'PLUG_IN_HYBRID',
+]
+
+export const TRANSMISSIONS: Transmission[] = [
+  'AUTOMATIC', 'MANUAL',
 ]

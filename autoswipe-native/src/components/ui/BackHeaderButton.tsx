@@ -2,7 +2,7 @@ import { Text, TouchableOpacity } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BACK_ICON_ONLY, BACK_ICON_ONLY_SIZE } from '../../constants/ui'
 
-/** Circular overlay back (listing gallery) — icon only ›, top trailing side (RTL-aware). */
+/** Circular overlay back (listing gallery) — icon only ›, positioned at top right (RTL-correct). */
 export function BackOverlayCircle({
   onPress,
   topExtra = 8,
@@ -17,7 +17,7 @@ export function BackOverlayCircle({
       style={{
         position: 'absolute',
         top: top + topExtra,
-        start: 16,
+        right: 16,
         backgroundColor: 'rgba(0,0,0,0.6)',
         borderRadius: 22,
         width: 44,

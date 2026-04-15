@@ -15,10 +15,10 @@ import { api } from '../../../src/lib/api'
 import { useSwipeStore } from '../../../src/store/swipe'
 import { queryKeys } from '../../../src/lib/query-keys'
 import {
-  VEHICLE_TYPES, FUEL_TYPES,
-  VEHICLE_TYPE_LABELS, FUEL_TYPE_LABELS,
+  VEHICLE_TYPES, FUEL_TYPES, TRANSMISSIONS,
+  VEHICLE_TYPE_LABELS, FUEL_TYPE_LABELS, TRANSMISSION_LABELS,
 } from '../../../src/constants/cars'
-import { FuelType, VehicleType, BuyerPreferences } from '../../../src/types'
+import { FuelType, VehicleType, Transmission, BuyerPreferences } from '../../../src/types'
 import {
   BrandModelPicker,
   CityPickerField,
@@ -46,6 +46,7 @@ export default function PreferencesScreen() {
 
   const [vehicleTypes, setVehicleTypes] = useState<VehicleType[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
+  const [transmissions, setTransmissions] = useState<Transmission[]>([])
   const [budgetMax, setBudgetMax] = useState(200000)
   const [location, setLocation] = useState('')
   const [radius, setRadius] = useState(50)
@@ -58,6 +59,7 @@ export default function PreferencesScreen() {
     if (!prefs) return
     setVehicleTypes(Array.isArray(prefs.vehicleTypes) ? prefs.vehicleTypes : JSON.parse(prefs.vehicleTypes as any || '[]'))
     setFuelTypes(Array.isArray(prefs.fuelPreferences) ? prefs.fuelPreferences : JSON.parse(prefs.fuelPreferences as any || '[]'))
+    setTransmissions(Array.isArray(prefs.transmissionPreferences) ? prefs.transmissionPreferences : JSON.parse(prefs.transmissionPreferences as any || '[]'))
     setBudgetMax(prefs.budgetMax || 200000)
     setLocation(prefs.location || '')
     setRadius(prefs.searchRadius || 50)
@@ -68,10 +70,12 @@ export default function PreferencesScreen() {
     mutationFn: () => api.put('/api/users/preferences', {
       vehicleTypes,
       fuelPreferences: fuelTypes,
+      transmissionPreferences: transmissions,
       budgetMax,
       location,
       searchRadius: radius,
       preferredBrands: brands,
+      preferredModels: models,
       yearFrom: yearMin ?? undefined,
     }),
     onSuccess: () => {
@@ -136,6 +140,19 @@ export default function PreferencesScreen() {
               label={FUEL_TYPE_LABELS[ft]}
               selected={fuelTypes.includes(ft)}
               onPress={() => toggle(fuelTypes, ft, setFuelTypes)}
+            />
+          ))}
+        </View>
+
+        {/* ── תיבת הילוכים ── */}
+        <SectionHeader label="⚙️ תיבת הילוכים" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+          {TRANSMISSIONS.map((tm) => (
+            <Chip
+              key={tm}
+              label={TRANSMISSION_LABELS[tm]}
+              selected={transmissions.includes(tm)}
+              onPress={() => toggle(transmissions, tm, setTransmissions)}
             />
           ))}
         </View>
