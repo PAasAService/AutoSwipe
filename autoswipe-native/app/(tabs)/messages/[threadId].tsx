@@ -105,6 +105,9 @@ export default function ChatScreen() {
   const inputDisabled = buyerLimitReached || sendMessage.isPending
 
   const isSuperLike = thread.isSuperLike === true
+  const isListingSold = thread.listing.status === 'SOLD'
+  const isListingPaused = thread.listing.status === 'PAUSED'
+  const isListingUnavailable = isListingSold || isListingPaused
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0F0F0F' }} edges={['bottom', 'left', 'right']}>
@@ -157,8 +160,29 @@ export default function ChatScreen() {
           )}
         />
 
-        {/* ── Pending state footer — replaces the input bar completely ── */}
-        {isPending ? (
+        {/* ── SOLD/PAUSED listing state footer — replaces the input bar completely ── */}
+        {isListingUnavailable ? (
+          <View style={{
+            margin: 16,
+            padding: 16,
+            borderRadius: 14,
+            backgroundColor: isListingSold ? 'rgba(255,107,107,0.10)' : 'rgba(255,152,0,0.10)',
+            borderWidth: 1,
+            borderColor: isListingSold ? 'rgba(255,107,107,0.3)' : 'rgba(255,152,0,0.3)',
+            alignItems: 'center',
+            gap: 8,
+          }}>
+            <Text style={{ fontSize: 22 }}>{isListingSold ? '🔴' : '⏸️'}</Text>
+            <Text style={{ color: isListingSold ? '#FF6B6B' : '#FF9800', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>
+              {isListingSold ? 'רכב זה כבר נמכר' : 'המודעה אינה זמינה כרגע'}
+            </Text>
+            <Text style={{ color: '#AAAAAA', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+              {isListingSold ? 'לא ניתן לשלוח הודעות חדשות לרכב שכבר נמכר.' : 'המודעה מושהה זמנית ולא זמינה לצפייה או הודעות. המוכר יוכל להחזיר אותה להיות זמינה בעתיד.'}
+            </Text>
+          </View>
+        ) : (
+        /* ── Pending state footer — replaces the input bar completely ── */
+        isPending ? (
           isSeller ? (
             /* Seller view: prompt to activate the thread */
             <View style={{
@@ -277,6 +301,7 @@ export default function ChatScreen() {
               />
             </View>
           </>
+        )
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>

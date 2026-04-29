@@ -1,0 +1,2 @@
+-- No-op migration placeholder.
+-- This directory was created accidentally without SQL contents.

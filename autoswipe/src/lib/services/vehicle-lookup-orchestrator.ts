@@ -123,14 +123,14 @@ export async function lookupVehicleByPlate(plate: string): Promise<VehicleLookup
       // Non-critical; continue without enrichment
     }
 
-    const finalResult = {
+    const finalResult: VehicleLookupResponse = {
       category: 'car',
       data: {
         ...carResult.data,
         ...enrichmentData,
-      },
+      } as UnifiedVehicle,
     }
-    console.log('[vehicle-lookup-orchestrator] Final response model:', finalResult.data.model)
+    console.log('[vehicle-lookup-orchestrator] Final response model:', finalResult.data?.model)
     return finalResult
   }
 

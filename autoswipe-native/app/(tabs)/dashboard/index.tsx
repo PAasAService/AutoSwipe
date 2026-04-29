@@ -205,7 +205,7 @@ function DashboardCard({
           <View style={{ flex: 1, padding: 12, gap: 4, ...(I18nManager.isRTL ? { paddingRight: 40 } : { paddingLeft: 40 }) }}>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 15, textAlign: 'right' }}>
-                {car.brand} {car.model} {car.year}
+                {car.brand} {car.model} {car.year}{car.hand != null ? ` • יד ${car.hand}` : ''}
               </Text>
               <View style={{ backgroundColor: `${statusColor}22`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 2 }}>
                 <Text style={{ color: statusColor, fontSize: 11, fontWeight: '600' }}>{statusLabel}</Text>

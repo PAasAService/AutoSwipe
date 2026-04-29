@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message'
 import { I18nManager } from 'react-native'
 import { queryClient } from '../src/lib/query-client'
 import { initAnalytics } from '../src/lib/analytics'
+import { initializeLocalityDatabase } from '../src/lib/israeli-localities'
 
 // Force RTL layout for Hebrew
 I18nManager.allowRTL(true)
@@ -15,7 +16,16 @@ I18nManager.forceRTL(true)
 
 export default function RootLayout() {
   useEffect(() => {
+    // Initialize analytics
     initAnalytics()
+
+    // Initialize Israeli localities database from official data.gov.il
+    // Uses proj4 library for accurate ITM → WGS84 conversion
+    // Fallback to 21 verified cities if API unavailable
+    // Safe: prevents duplicate initialization, handles race conditions
+    initializeLocalityDatabase().catch((error) => {
+      console.warn('[RootLayout] Failed to initialize locality database:', error)
+    })
   }, [])
 
   return (

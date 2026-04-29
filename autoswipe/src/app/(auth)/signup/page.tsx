@@ -154,7 +154,7 @@ export default function SignupPage() {
               value={name}
               onChange={(e) => {
                 setName(e.target.value)
-                setErrors((prev) => ({ ...prev, name: undefined }))
+                setErrors((prev) => ({ ...prev, name: '' }))
               }}
               placeholder="ישראל ישראלי"
               autoComplete="name"

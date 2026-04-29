@@ -34,7 +34,7 @@ interface FormData {
   brand: string; model: string; year: string; fuelType: FuelType | ''
   vehicleType: VehicleType | ''; transmission: Transmission | ''
   engineSize: string; color: string
-  mileage: string; doors: string; seats: string
+  mileage: string; doors: string; seats: string; hand: string
   price: string; location: string
   insuranceEstimate: string; maintenanceEstimate: string
   depreciationRate: string; fuelConsumption: string
@@ -67,7 +67,7 @@ export default function CreateListingScreen() {
   const [form, setForm] = useState<FormData>({
     brand: '', model: '', year: '', fuelType: '', vehicleType: '', transmission: '',
     engineSize: '', color: '',
-    mileage: '', doors: '4', seats: '5',
+    mileage: '', doors: '4', seats: '5', hand: '',
     price: '', location: '',
     insuranceEstimate: '', maintenanceEstimate: '', depreciationRate: '12', fuelConsumption: '',
     description: '', sellerReason: '',
@@ -138,6 +138,7 @@ export default function CreateListingScreen() {
           mileage: String(L.mileage),
           doors: String(L.doors ?? 4),
           seats: String(L.seats ?? 5),
+          hand: L.hand != null ? String(L.hand) : '',
           price: String(L.price),
           location: L.location,
           insuranceEstimate: String(L.insuranceEstimate),
@@ -156,7 +157,7 @@ export default function CreateListingScreen() {
         setImages(
           ordered.map((img) => ({
             uri: listingImageUri(img.path),
-            path: img.path,
+            path: img.url,
             uploading: false,
           })),
         )
@@ -302,8 +303,8 @@ export default function CreateListingScreen() {
     const hasUploading = images.some((i) => i.uploading)
     if (hasUploading) { Toast.show({ type: 'error', text1: 'יש תמונות שעדיין בהעלאה' }); return }
     if (!images.length) { Toast.show({ type: 'error', text1: 'נדרשת לפחות תמונה אחת' }); return }
-    if (!form.brand || !form.model || !form.price || !form.mileage || !form.location) {
-      Toast.show({ type: 'error', text1: 'נא למלא את כל השדות הנדרשים' })
+    if (!form.brand || !form.model || !form.price || !form.mileage || !form.location || !form.hand) {
+      Toast.show({ type: 'error', text1: 'נא למלא את כל השדות הנדרשים (כולל יד רכב)' })
       return
     }
 
@@ -323,6 +324,7 @@ export default function CreateListingScreen() {
         color: form.color || undefined,
         doors: parseInt(form.doors) || 4,
         seats: parseInt(form.seats) || 5,
+        hand: form.hand ? parseInt(form.hand) : undefined,
         insuranceEstimate: parseInt(form.insuranceEstimate) || 5000,
         maintenanceEstimate: parseInt(form.maintenanceEstimate) || 3000,
         depreciationRate: parseInt(form.depreciationRate) / 100 || 0.12,
@@ -552,6 +554,14 @@ function StepDetails({ form, set }: any) {
           </View>
         </>
       )}
+
+      {/* Vehicle hand applies to BOTH cars and motorcycles */}
+      <SectionLabel text="יד רכב *" />
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {['1', '2', '3', '4', '5', '6'].map((h) => (
+          <SelectChip key={h} label={`יד ${h}`} selected={form.hand === h} onPress={() => set('hand', h)} />
+        ))}
+      </View>
     </View>
   )
 }

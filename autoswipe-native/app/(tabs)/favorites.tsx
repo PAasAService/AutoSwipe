@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import { useRouter } from 'expo-router'
 import { goBackSafeWithReturn, hrefWithReturn } from '../../src/lib/go-back-safe'
 import { useReturnTo } from '../../src/hooks/useReturnTo'
+import { useCallback } from 'react'
 import { Image } from 'expo-image'
 import Toast from 'react-native-toast-message'
 import * as Haptics from 'expo-haptics'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../src/lib/api'
 import { listingImageUri } from '../../src/lib/listing-image-uri'
 import { useFavorites, useRemoveFavorite } from '../../src/hooks/useFavorites'
@@ -17,11 +19,13 @@ import { FUEL_TYPE_LABELS } from '../../src/constants/cars'
 import Skeleton from '../../src/components/ui/Skeleton'
 import { SCREEN_EDGE, SCREEN_HEADER_BORDER } from '../../src/constants/layout'
 import { BACK_ICON_ONLY, BACK_ICON_ONLY_SIZE } from '../../src/constants/ui'
+import { queryKeys } from '../../src/lib/query-keys'
 
 export default function FavoritesScreen() {
   const router = useRouter()
   const returnTo = useReturnTo()
   const insets = useSafeAreaInsets()
+  const qc = useQueryClient()
 
   const { data: favorites, isLoading, isError, error } = useFavorites()
   const removeFavorite = useRemoveFavorite()
@@ -43,6 +47,15 @@ export default function FavoritesScreen() {
       router.replace('/(auth)/login')
     }
   }, [isLoading, isError, error, router])
+
+  // Refetch favorites when screen comes into focus to ensure SOLD status is current
+  useFocusEffect(
+    useCallback(() => {
+      // Invalidate favorites query to trigger refetch from API
+      // This ensures we see the latest SOLD status for listings that may have been marked SOLD elsewhere
+      qc.invalidateQueries({ queryKey: queryKeys.favorites() })
+    }, [qc])
+  )
 
   function handleFavoritesBack() {
     goBackSafeWithReturn(returnTo)
@@ -326,27 +339,49 @@ function FavoriteCard({
   onPress: () => void; onMessage: (listingId: string) => void
 }) {
   const primaryImage = car.images.find((i) => i.isPrimary) || car.images[0]
+  const isSold = car.status === 'SOLD'
+  const isPaused = car.status === 'PAUSED'
+  const isUnavailable = isSold || isPaused
 
   return (
     <View style={{
       backgroundColor: '#1A1A1A', borderRadius: 16, overflow: 'hidden',
       borderWidth: isSelected ? 2 : 1,
       borderColor: isSelected ? '#D4A843' : 'rgba(255,255,255,0.08)',
+      opacity: isUnavailable ? 0.6 : 1,
     }}>
       <TouchableOpacity onPress={onPress} style={{ flexDirection: 'row' }}>
-        {primaryImage ? (
-          <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: 110, height: 100 }} contentFit="cover" />
-        ) : (
-          <View style={{ width: 110, height: 100, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 32 }}>🚗</Text>
-          </View>
-        )}
+        <View style={{ position: 'relative' }}>
+          {primaryImage ? (
+            <Image source={{ uri: listingImageUri(primaryImage.path) }} style={{ width: 110, height: 100 }} contentFit="cover" />
+          ) : (
+            <View style={{ width: 110, height: 100, backgroundColor: '#0F0F0F', justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 32 }}>🚗</Text>
+            </View>
+          )}
+          {isUnavailable && (
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+              <Text style={{ color: isPaused ? '#FF9800' : '#FF6B6B', fontWeight: '700', fontSize: 12, textAlign: 'center' }}>
+                {isPaused ? 'לא זמינה' : 'נמכר'}
+              </Text>
+            </View>
+          )}
+        </View>
         <View style={{ flex: 1, padding: 12, gap: 3 }}>
           <Text style={{ color: '#F5F5F5', fontWeight: '700', fontSize: 16, textAlign: 'right' }}>
             {car.brand} {car.model}
           </Text>
           <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right' }}>
-            {car.year} • {FUEL_TYPE_LABELS[car.fuelType]}
+            {car.year} • {FUEL_TYPE_LABELS[car.fuelType]}{car.hand != null ? ` • יד ${car.hand}` : ''}
           </Text>
           <Text style={{ color: '#888888', fontSize: 13, textAlign: 'right' }}>
             {formatMileage(car.mileage)} • {car.location}
@@ -373,11 +408,14 @@ function FavoriteCard({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => onMessage(car.id)}
-          accessibilityLabel="שלח הודעה למוכר"
-          style={{ flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.06)' }}
+          onPress={() => !isUnavailable && onMessage(car.id)}
+          disabled={isUnavailable}
+          accessibilityLabel={isUnavailable ? (isPaused ? 'רכב זה אינו זמין כרגע' : 'רכב זה כבר נמכר') : 'שלח הודעה למוכר'}
+          style={{ flex: 1, padding: 10, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.06)', opacity: isUnavailable ? 0.4 : 1 }}
         >
-          <Text style={{ fontSize: 12, color: '#888' }}>💬 הודעה</Text>
+          <Text style={{ fontSize: 12, color: isUnavailable ? '#666' : '#888' }}>
+            {isUnavailable ? '🔒 לא זמין' : '💬 הודעה'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onRemove}

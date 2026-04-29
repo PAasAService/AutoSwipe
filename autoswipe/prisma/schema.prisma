@@ -153,6 +153,7 @@ model CarListing {
   color               String?
   doors               Int?
   seats               Int?
+  hand                Int // Vehicle ownership count (יד): 1, 2, 3, etc. — REQUIRED
   vin                 String?
 
   // ── Government verification ──────────────────────────────────────────────

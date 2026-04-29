@@ -147,6 +147,17 @@ export async function POST(req: NextRequest, { params }: { params: { threadId: s
     )
   }
 
+  // Guard: block messaging if listing is no longer active (SOLD, PAUSED, DELETED, etc.)
+  if (thread.listing.status !== 'ACTIVE') {
+    return NextResponse.json(
+      {
+        error: 'המודעה כבר לא זמינה — לא ניתן לשלוח הודעות',
+        code: 'LISTING_NOT_ACTIVE',
+      },
+      { status: 400 }
+    )
+  }
+
   if (await isBlocked(thread.buyerId, thread.sellerId)) {
     return NextResponse.json({ error: 'לא ניתן לשלוח הודעה' }, { status: 403 })
   }

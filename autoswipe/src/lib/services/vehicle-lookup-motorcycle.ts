@@ -136,7 +136,6 @@ export async function lookupMotorcycleOptimized(
 
     const response = await fetch(url, {
       signal: controller.signal,
-      timeout: TIMEOUT_MS,
     })
 
     if (!response.ok) {

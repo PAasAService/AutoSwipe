@@ -14,9 +14,14 @@ async function cacheSeedImage(remoteUrl: string, seedKey: string): Promise<strin
   const diskPath = path.join(process.cwd(), 'public', rel.replace(/^\//, ''))
   await fs.mkdir(path.dirname(diskPath), { recursive: true })
   if (!existsSync(diskPath)) {
-    const res = await fetch(remoteUrl)
-    if (!res.ok) throw new Error(`Seed fetch failed: ${remoteUrl}`)
-    await fs.writeFile(diskPath, Buffer.from(await res.arrayBuffer()))
+    try {
+      const res = await fetch(remoteUrl)
+      if (!res.ok) throw new Error(`Seed fetch failed: ${remoteUrl}`)
+      await fs.writeFile(diskPath, Buffer.from(await res.arrayBuffer()))
+    } catch (err) {
+      console.warn(`⚠️  Skipping seed image: ${remoteUrl}`, err)
+      return ''
+    }
   }
   return rel
 }
@@ -332,7 +337,8 @@ async function main() {
     const remoteImages = CAR_IMAGES[data.brand] ?? CAR_IMAGES.default
     const localPaths: string[] = []
     for (let j = 0; j < remoteImages.length; j++) {
-      localPaths.push(await cacheSeedImage(remoteImages[j], `l${i}-${j}.jpg`))
+      const path = await cacheSeedImage(remoteImages[j], `l${i}-${j}.jpg`)
+      if (path) localPaths.push(path)
     }
 
     await prisma.carListing.create({
@@ -352,6 +358,7 @@ async function main() {
         color: data.color,
         doors: data.doors,
         seats: data.seats,
+        hand: 1,
         insuranceEstimate: data.insuranceEstimate,
         maintenanceEstimate: data.maintenanceEstimate,
         depreciationRate: data.depreciationRate,

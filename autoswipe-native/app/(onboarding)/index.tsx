@@ -487,7 +487,7 @@ export default function OnboardingScreen() {
         </View>
         <View style={{ gap: 14 }}>
           <TouchableOpacity
-            onPress={() => finishBoth('/listing/create/index')}
+            onPress={() => finishBoth('/listing/create')}
             disabled={loading}
             style={[s.primaryBtn, { opacity: loading ? 0.7 : 1 }]}
           >

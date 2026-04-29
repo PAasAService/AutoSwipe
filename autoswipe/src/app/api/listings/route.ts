@@ -22,6 +22,7 @@ const createSchema = z.object({
   color: z.string().optional(),
   doors: z.number().int().min(2).max(7).optional(),
   seats: z.number().int().min(2).max(9).optional(),
+  hand: z.number().int().min(1).max(10), // Required field
   insuranceEstimate: z.number().int().min(0).max(100_000),
   maintenanceEstimate: z.number().int().min(0).max(100_000),
   depreciationRate: z.number().min(0).max(1),
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
         color: data.color,
         doors: data.doors,
         seats: data.seats,
+        hand: data.hand,
         insuranceEstimate: data.insuranceEstimate,
         maintenanceEstimate: data.maintenanceEstimate,
         depreciationRate: data.depreciationRate,

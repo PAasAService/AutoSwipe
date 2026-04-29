@@ -111,6 +111,9 @@ export default function ListingDetailScreen() {
 
   const isFavorited = favorites?.some((f) => f.id === listing.id) ?? false
   const isSeller = me?.id === listing.sellerId
+  const isSold = listing.status === 'SOLD'
+  const isPaused = listing.status === 'PAUSED'
+  const isUnavailable = isSold || isPaused
   const costs = calculateCostBreakdown(
     listing.price,
     listing.insuranceEstimate,
@@ -213,6 +216,16 @@ export default function ListingDetailScreen() {
 
           {/* Badges */}
           <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {isSold && (
+              <View style={{ backgroundColor: 'rgba(255,107,107,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                <Text style={{ color: '#FF6B6B', fontSize: 13, fontWeight: '700' }}>🔴 נמכר</Text>
+              </View>
+            )}
+            {isPaused && (
+              <View style={{ backgroundColor: 'rgba(255,152,0,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
+                <Text style={{ color: '#FF9800', fontSize: 13, fontWeight: '700' }}>⏸️ לא זמינה</Text>
+              </View>
+            )}
             {listing.isGovVerified && (
               <View style={{ backgroundColor: 'rgba(76,175,80,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexDirection: 'row', gap: 4, alignItems: 'center' }}>
                 <Text style={{ color: '#4CAF50', fontSize: 13, fontWeight: '600' }}>✓ מאומת ממשלתית</Text>
@@ -239,10 +252,10 @@ export default function ListingDetailScreen() {
               listing.color ? ['צבע', listing.color] : null,
               listing.doors != null ? ['דלתות', String(listing.doors)] : null,
               listing.seats != null ? ['מושבים', String(listing.seats)] : null,
+              listing.hand != null ? ['יד רכב', `יד ${listing.hand}`] : null,
               listing.engineSize ? ['מנוע', `${listing.engineSize} סמ"ק`] : null,
               listing.horsepower ? ['כוח סוס', `${listing.horsepower} כ"ס`] : null,
               ['צריכת דלק', `${listing.fuelConsumption} ל/100 ק"מ`],
-              listing.hand != null ? ['יד', formatHand(listing.hand)] : null,
               listing.currentOwnershipType ? ['בעלות נוכחית', listing.currentOwnershipType] : null,
               listing.previousOwnershipType ? ['בעלות קודמת', listing.previousOwnershipType] : null,
               listing.testExpiry ? ['תאריך טסט', formatDate(listing.testExpiry)] : null,
@@ -365,25 +378,43 @@ export default function ListingDetailScreen() {
 
           {/* Like button: now triggers swipe RIGHT behavior (removes from deck) */}
           <TouchableOpacity
-            onPress={() => likeSwipe.mutate()}
-            disabled={likeSwipe.isPending}
+            onPress={() => !isUnavailable && likeSwipe.mutate()}
+            disabled={isUnavailable || likeSwipe.isPending}
             style={{
               width: 48, height: 48, borderRadius: 12,
               backgroundColor: isFavorited ? 'rgba(244,67,54,0.25)' : 'rgba(244,67,54,0.1)',
               borderWidth: isFavorited ? 1.5 : 0,
               borderColor: 'rgba(244,67,54,0.5)',
               justifyContent: 'center', alignItems: 'center',
-              opacity: likeSwipe.isPending ? 0.6 : 1,
+              opacity: (isUnavailable || likeSwipe.isPending) ? 0.4 : 1,
             }}
           >
             {likeSwipe.isPending ? (
               <ActivityIndicator size="small" color="#F44336" />
             ) : (
-              <Text style={{ fontSize: 20 }}>{isFavorited ? '❤️' : '🤍'}</Text>
+              <Text style={{ fontSize: 20 }}>{isUnavailable ? '🔒' : isFavorited ? '❤️' : '🤍'}</Text>
             )}
           </TouchableOpacity>
 
-          {listing.messagingMode === 'SELLER_FIRST' ? (
+          {isSold ? (
+            <View style={{
+              flex: 1, height: 48, borderRadius: 12,
+              backgroundColor: 'rgba(255,107,107,0.15)',
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 1, borderColor: 'rgba(255,107,107,0.3)',
+            }}>
+              <Text style={{ color: '#FF6B6B', fontWeight: '700', fontSize: 15 }}>🔴 רכב זה כבר נמכר</Text>
+            </View>
+          ) : isPaused ? (
+            <View style={{
+              flex: 1, height: 48, borderRadius: 12,
+              backgroundColor: 'rgba(255,152,0,0.15)',
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 1, borderColor: 'rgba(255,152,0,0.3)',
+            }}>
+              <Text style={{ color: '#FF9800', fontWeight: '700', fontSize: 15 }}>⏸️ המודעה לא זמינה כרגע</Text>
+            </View>
+          ) : listing.messagingMode === 'SELLER_FIRST' ? (
             <View style={{
               flex: 1, height: 48, borderRadius: 12,
               backgroundColor: '#1A1A1A',

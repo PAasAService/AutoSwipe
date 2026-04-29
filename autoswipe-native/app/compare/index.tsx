@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Dimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useEffect } from 'react'
 import { goBackSafeWithReturn } from '../../src/lib/go-back-safe'
 import { useReturnTo } from '../../src/hooks/useReturnTo'
 import { useQueries, useQuery } from '@tanstack/react-query'
@@ -14,6 +15,7 @@ import { calculateCostBreakdown } from '../../src/lib/utils/cost-calculator'
 import { SCREEN_EDGE } from '../../src/constants/layout'
 import { queryKeys } from '../../src/lib/query-keys'
 import { BACK_ICON_ONLY, BACK_ICON_ONLY_SIZE } from '../../src/constants/ui'
+import { initializeLocalityDatabase, getLocalityCoords } from '../../src/lib/israeli-localities'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -33,49 +35,16 @@ function calculateDistance(
   return R * c
 }
 
-// ── Geocoding mock (simple major cities) ────────────────────────────────────
-const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
-  'תל אביב': { lat: 32.0853, lon: 34.7818 },
-  'ירושלים': { lat: 31.7683, lon: 35.2137 },
-  'חיפה': { lat: 32.8193, lon: 34.9896 },
-  'בנימין': { lat: 32.1739, lon: 35.2043 },
-  'תל אביב-יפו': { lat: 32.0853, lon: 34.7818 },
-  'תל אביב יפו': { lat: 32.0853, lon: 34.7818 },
-  'גן רמות': { lat: 32.0731, lon: 34.8212 },
-  'רמת גן': { lat: 32.0731, lon: 34.8212 },
-  'גבעתיים': { lat: 32.0588, lon: 34.8119 },
-  'הוד השרון': { lat: 32.1614, lon: 34.8875 },
-  'אור יהודה': { lat: 32.0012, lon: 34.8569 },
-  'כפר סבא': { lat: 32.1674, lon: 34.9246 },
-  'רעננה': { lat: 32.1943, lon: 34.8719 },
-  'הרצליה': { lat: 32.1693, lon: 34.7832 },
-  'יבנה': { lat: 31.8856, lon: 34.7434 },
-  'אשדוד': { lat: 31.8067, lon: 34.6452 },
-  'אשקלון': { lat: 31.6645, lon: 34.5704 },
-  'בת ים': { lat: 32.0036, lon: 34.7592 },
-  'בית שמש': { lat: 31.8353, lon: 35.1926 },
-  'מודיעין': { lat: 31.8977, lon: 35.2033 },
-  'רוש פינה': { lat: 32.9653, lon: 35.4823 },
-  'צפת': { lat: 32.9675, lon: 35.4865 },
-  'טבריה': { lat: 32.7940, lon: 35.5303 },
-  'נצרת': { lat: 32.7002, lon: 35.2975 },
-  'עפולה': { lat: 32.6085, lon: 35.2844 },
-  'חדרה': { lat: 32.4343, lon: 34.9191 },
-  'ראש פינה': { lat: 32.9653, lon: 35.4823 },
-  'קיסריה': { lat: 32.4468, lon: 34.9097 },
-  'בית שאן': { lat: 32.5049, lon: 35.5029 },
-  'רמת השרון': { lat: 32.2154, lon: 34.8542 },
-}
-
-function getCityCoords(city: string): { lat: number; lon: number } | null {
-  if (!city) return null
-  const normalized = city.trim().toLowerCase()
-  for (const [key, coords] of Object.entries(CITY_COORDS)) {
-    if (key.toLowerCase() === normalized || key.toLowerCase().includes(normalized)) {
-      return coords
-    }
-  }
-  return null
+/**
+ * Location coordinates lookup
+ * Uses official Israeli localities dataset with proj4-based ITM → WGS84 conversion
+ * Validates with <2km error on real test data
+ * Falls back to hardcoded 21-city set if dataset unavailable
+ */
+function getLocalityCoordsWrapper(locality: string): { lat: number; lon: number } | null {
+  // Use official dataset (loaded at app startup)
+  // Returns null if not found - Compare handles gracefully
+  return getLocalityCoords(locality)
 }
 
 // ── Deal tag ranking for market value comparison ────────────────────────────
@@ -89,6 +58,48 @@ function getDealTagRank(tag: string | undefined): number {
   }
 }
 
+// ── Determine which comparison categories are active ──────────────────────────
+/**
+ * A category is ACTIVE if it has all required data to perform a valid comparison.
+ * Returns a map of category name → boolean (active).
+ *
+ * Categories that can become INACTIVE:
+ * - location: requires userPrefs.location (non-empty string)
+ * - fuelType: requires userPrefs.fuelPreferences (non-empty array)
+ * - transmission: requires userPrefs.transmissionPreferences (non-empty array)
+ *
+ * Always-active categories (9):
+ * price, monthlyCost, kilometers, year, hand, fuelConsumption, insurance, maintenance, marketValue
+ */
+function getActiveCategories(userPrefs: BuyerPreferences | undefined): Record<string, boolean> {
+  return {
+    // Always active (no preference required)
+    price: true,
+    monthlyCost: true,
+    kilometers: true,
+    year: true,
+    hand: true,
+    fuelConsumption: true,
+    insurance: true,
+    maintenance: true,
+    marketValue: true,
+
+    // Conditional: only active if user has provided the preference
+    location: Boolean(userPrefs?.location),
+    fuelType: Boolean(userPrefs?.fuelPreferences && userPrefs.fuelPreferences.length > 0),
+    transmission: Boolean(userPrefs?.transmissionPreferences && userPrefs.transmissionPreferences.length > 0),
+  }
+}
+
+/**
+ * Count how many comparison categories are active (available for use).
+ * Used to show accurate denominator in summary ("won 5 out of 11" instead of "out of 12")
+ */
+function countActiveCategories(userPrefs: BuyerPreferences | undefined): number {
+  const active = getActiveCategories(userPrefs)
+  return Object.values(active).filter(Boolean).length
+}
+
 // ── Category winners computation ────────────────────────────────────────────
 function computeCategoryWinners(
   listings: CarListing[],
@@ -98,6 +109,8 @@ function computeCategoryWinners(
   const n = listings.length
 
   // Helper: get winners (supports ties — returns array of indices)
+  // CRITICAL FIX: Only return winners if there's an actual difference in values
+  // If all values are equal, return empty array (no winner / no advantage)
   function getWinners(values: (number | null)[], lowerIsBetter: boolean): number[] {
     const valids = values
       .map((v, i) => ({ v, i }))
@@ -108,7 +121,14 @@ function computeCategoryWinners(
       ? Math.min(...valids.map((x) => x.v))
       : Math.max(...valids.map((x) => x.v))
 
-    return valids.filter(({ v }) => v === bestVal).map(({ i }) => i)
+    const winners = valids.filter(({ v }) => v === bestVal).map(({ i }) => i)
+
+    // Check if ALL values are equal (complete tie = no winner)
+    if (valids.length === listings.length && valids.every(({ v }) => v === bestVal)) {
+      return []
+    }
+
+    return winners
   }
 
   const winners = {
@@ -116,6 +136,7 @@ function computeCategoryWinners(
     monthlyCost: getWinners(costs.map((c) => c.total), true),
     kilometers: getWinners(listings.map((l) => l.mileage), true),
     year: getWinners(listings.map((l) => l.year), false),
+    hand: getWinners(listings.map((l) => l.hand ?? null), true), // Lower hand count is better (יד 1 beats יד 2)
     fuelConsumption: getWinners(listings.map((l) => l.fuelConsumption), true),
     insurance: getWinners(listings.map((l) => l.insuranceEstimate), true),
     maintenance: getWinners(listings.map((l) => l.maintenanceEstimate), true),
@@ -131,54 +152,79 @@ function computeCategoryWinners(
     })(),
 
     // Location: closest to user's preferred location
+    // Uses official Israeli localities dataset with proj4-based ITM → WGS84 conversion
+    // Validation: <2km error on real test data (5 Israeli cities)
+    // Fallback: 21 verified cities if official dataset unavailable
+    // Rules: unique closest wins, tie = no winner, unresolved = no winner
     location: (() => {
       if (!userPrefs?.location) return []
-      const userCoords = getCityCoords(userPrefs.location)
+
+      const userCoords = getLocalityCoordsWrapper(userPrefs.location)
       if (!userCoords) {
-        // Fallback: if user's preferred city not found, no location winner
-        // (don't force a winner based on incomplete data)
+        // User's location not found in official dataset or fallback
+        console.warn('[Compare] Location comparison skipped: user location not found', userPrefs.location)
         return []
       }
 
       const distances = listings.map((l, i) => {
-        const carCoords = getCityCoords(l.location)
+        const carCoords = getLocalityCoordsWrapper(l.location)
         if (!carCoords) {
-          // If car's location not in table, approximate by string matching
+          // Car location not found - use string matching as weak fallback
           const locationLower = l.location.toLowerCase()
           const userPrefLower = userPrefs.location.toLowerCase()
-          // Return very high distance if no match, 0 if matches
           return {
             dist: locationLower.includes(userPrefLower) ? 0 : 999999,
             i,
           }
         }
+        // Both locations found - use real geographic distance
         const dist = calculateDistance(userCoords.lat, userCoords.lon, carCoords.lat, carCoords.lon)
         return { dist: dist ?? 999999, i }
       })
 
       const minDist = Math.min(...distances.map((x) => x.dist))
-      if (minDist === 999999) return [] // All locations unknown, no winner
-      return distances.filter(({ dist }) => dist === minDist).map(({ i }) => i)
+      if (minDist === 999999) return [] // All locations unresolvable
+
+      const winners = distances.filter(({ dist }) => dist === minDist).map(({ i }) => i)
+
+      // CRITICAL: No winner if multiple cars tied for best distance
+      if (winners.length > 1) {
+        return []
+      }
+
+      return winners
     })(),
 
     // Fuel type: match user's fuel preferences
+    // CRITICAL FIX: If all cars have the same match status (all match or all don't), no winner
     fuelType: (() => {
       if (!userPrefs?.fuelPreferences || userPrefs.fuelPreferences.length === 0) return []
-      const matches = listings
-        .map((l, i) => ({ matches: userPrefs.fuelPreferences.includes(l.fuelType), i }))
-        .filter(({ matches }) => matches)
-        .map(({ i }) => i)
-      return matches.length > 0 ? matches : []
+      const matches = listings.map((l, i) => ({ matches: userPrefs.fuelPreferences.includes(l.fuelType), i }))
+      const matchesWinners = matches.filter(({ matches }) => matches).map(({ i }) => i)
+
+      // If all cars match OR all cars don't match, no advantage for any car
+      if (matchesWinners.length === 0 || matchesWinners.length === listings.length) {
+        return []
+      }
+
+      // Only some cars match → those cars win
+      return matchesWinners
     })(),
 
     // Transmission: match user's transmission preferences
+    // CRITICAL FIX: If all cars have the same match status (all match or all don't), no winner
     transmission: (() => {
       if (!userPrefs?.transmissionPreferences || userPrefs.transmissionPreferences.length === 0) return []
-      const matches = listings
-        .map((l, i) => ({ matches: userPrefs.transmissionPreferences.includes(l.transmission), i }))
-        .filter(({ matches }) => matches)
-        .map(({ i }) => i)
-      return matches.length > 0 ? matches : []
+      const matches = listings.map((l, i) => ({ matches: userPrefs.transmissionPreferences.includes(l.transmission), i }))
+      const matchesWinners = matches.filter(({ matches }) => matches).map(({ i }) => i)
+
+      // If all cars match OR all cars don't match, no advantage for any car
+      if (matchesWinners.length === 0 || matchesWinners.length === listings.length) {
+        return []
+      }
+
+      // Only some cars match → those cars win
+      return matchesWinners
     })(),
   }
 
@@ -192,6 +238,7 @@ function generateSummary(
   runners: number[],
   listings: CarListing[],
   costs: Array<{ total: number }>,
+  activeCategoryCount: number = 12, // Denominator for category wins (only active categories counted)
 ): string[] {
   const winner = listings[winnerIdx]
   const runnerIdx = runners.length > 0 ? runners[0] : -1
@@ -253,6 +300,14 @@ function generateSummary(
         priority: 2,
       })
     }
+  }
+
+  // 2.5. Vehicle hand advantage — High priority (right after mileage)
+  if (categoryWinners.hand.includes(winnerIdx)) {
+    advantages.push({
+      text: `יד רכב נמוכה יותר (יד ${winner.hand})`,
+      priority: 2.5,
+    })
   }
 
   // 3. Monthly cost advantage
@@ -390,6 +445,16 @@ export default function CompareScreen() {
   const idList = parseCompareIds(
     useLocalSearchParams() as Record<string, string | string[] | undefined>,
   )
+
+  // Initialize official localities database (proj4-validated ITM conversion)
+  // Safe: prevents duplicate initialization, handles race conditions
+  // Fallback: uses 21 verified cities if API unavailable
+  useEffect(() => {
+    initializeLocalityDatabase().catch((error) => {
+      console.warn('[CompareScreen] Failed to initialize locality database:', error)
+      // App continues with fallback cities
+    })
+  }, [])
 
   const results = useQueries({
     queries: idList.map((id) => ({
@@ -631,8 +696,12 @@ export default function CompareScreen() {
     .filter(({ i }) => i !== overallWinner)
     .sort((a, b) => b.count - a.count)[0]?.i ?? 0
 
-  // Generate summary based on actual category wins
-  const summaryLines = generateSummary(overallWinner, categoryWinners, [runnerUp], listings, costs)
+  // Determine active comparison categories (only count those with available user preference data)
+  const activeCategoriesMap = getActiveCategories(userPrefs)
+  const activeCategoryCount = countActiveCategories(userPrefs)
+
+  // Generate summary based on actual category wins and active categories
+  const summaryLines = generateSummary(overallWinner, categoryWinners, [runnerUp], listings, costs, activeCategoryCount)
 
   const colWidth = (SCREEN_WIDTH - 48) / (listings.length + 1)
 
@@ -660,6 +729,11 @@ export default function CompareScreen() {
       label: 'שנה',
       values: listings.map((l) => String(l.year)),
       winnerIs: categoryWinners.year,
+    },
+    {
+      label: 'יד רכב',
+      values: listings.map((l) => l.hand ? `יד ${l.hand}` : '—'),
+      winnerIs: categoryWinners.hand,
     },
     {
       label: 'דלק',
@@ -822,10 +896,10 @@ export default function CompareScreen() {
           </View>
 
           <View style={{ gap: 8 }}>
-            {/* Show category win count out of 11 */}
+            {/* Show category win count out of active categories */}
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, alignItems: 'center', marginBottom: 4 }}>
               <Text style={{ color: '#888', fontSize: 13, textAlign: 'right' }}>
-                זכה ב־{categoryWinCounts[overallWinner]} מתוך 11 קטגוריות
+                זכה ב־{categoryWinCounts[overallWinner]} מתוך {activeCategoryCount} קטגוריות
               </Text>
               <Text>🎯</Text>
             </View>

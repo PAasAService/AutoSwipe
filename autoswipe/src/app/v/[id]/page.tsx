@@ -10,7 +10,7 @@ import CarImagePlaceholder from '@/components/ui/CarImagePlaceholder'
 import { DealBadge } from '@/components/ui/Badge'
 import { VerifiedBadge } from '@/components/listing/VerifiedBadge'
 import { ArrowRight, MapPin, Gauge, Fuel, Calendar, Car } from 'lucide-react'
-import type { CostBreakdown } from '@/types'
+import type { CostBreakdown, DealTag } from '@/types'
 
 /**
  * Public listing page — no authentication required.
@@ -127,7 +127,7 @@ export default async function PublicListingPage({ params }: { params: { id: stri
           {/* Tags row */}
           <div className="flex flex-wrap gap-2 mt-3">
             {listing.dealTag && listing.dealTag !== 'FAIR_PRICE' && (
-              <DealBadge dealTag={listing.dealTag} />
+              <DealBadge tag={listing.dealTag as DealTag} />
             )}
             {listing.isGovVerified && (
               <VerifiedBadge />

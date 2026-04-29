@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
     const resolvedName = displayFromClient ?? nameFromToken
 
-    function isPlaceholderName(userName: string, userEmail: string | null): boolean {
+    const isPlaceholderName = (userName: string, userEmail: string | null): boolean => {
       if (userName === 'משתמש') return true
       if (userEmail && userEmail.includes('@')) {
         const local = userEmail.split('@')[0]!

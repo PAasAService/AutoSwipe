@@ -201,9 +201,9 @@ export default function SwipeCard({ card, isTop, onPress }: Props) {
               {card.brand} {card.model}
             </Text>
 
-            {/* Year & fuel */}
+            {/* Year & fuel & hand */}
             <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 15, textAlign: 'right', marginTop: 2 }}>
-              {card.year} • {FUEL_TYPE_LABELS[card.fuelType]}
+              {card.year} • {FUEL_TYPE_LABELS[card.fuelType]}{card.hand != null ? ` • יד ${card.hand}` : ''}
             </Text>
 
             {/* Location & mileage */}

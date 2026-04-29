@@ -178,7 +178,6 @@ export async function lookupCarOptimized(plate: string): Promise<CarLookupResult
 
     const response = await fetch(url, {
       signal: controller.signal,
-      timeout: TIMEOUT_MS,
     })
 
     if (!response.ok) {
@@ -210,7 +209,7 @@ export async function lookupCarOptimized(plate: string): Promise<CarLookupResult
       return null
     }
 
-    const result = {
+    const result: CarLookupResult = {
       category: 'car',
       data: {
         licenseState: 'car',

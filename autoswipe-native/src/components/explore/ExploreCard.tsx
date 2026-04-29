@@ -133,7 +133,7 @@ export default function ExploreCard({ car, isFavorited, onPress, onToggleFavorit
           {car.brand} {car.model}
         </Text>
         <Text style={{ color: '#888888', fontSize: 11, textAlign: 'right' }}>
-          {car.year} • {formatMileage(car.mileage)}
+          {car.year} • {formatMileage(car.mileage)}{car.hand != null ? ` • יד ${car.hand}` : ''}
         </Text>
         <Text style={{ color: '#D4A843', fontWeight: '800', fontSize: 15, textAlign: 'right' }}>
           {formatILS(car.price)}
