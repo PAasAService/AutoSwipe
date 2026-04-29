@@ -9,41 +9,82 @@
  * Total Records: 1484 official Israeli localities
  * Coordinate System: ITM (Israeli Transverse Mercator)
  * Output System: WGS84 (latitude/longitude)
- * Conversion Library: proj4 (proven, battle-tested)
+ * Conversion Method: Pure JavaScript ITM inverse transformation
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * COORDINATE CONVERSION APPROACH
+ * ITM Projection Parameters (EPSG:2039)
  * ═══════════════════════════════════════════════════════════════════════════════
- *
- * Previous Approach: Custom Transverse Mercator inverse formula
- * Result: ~400km errors (FAILED)
- *
- * New Approach: proj4 library (industry-standard, used worldwide)
- * Validation: Real test data against known Israeli localities
- * Reliability: Proven in thousands of production systems
- *
- * ITM Projection Definition (EPSG:2039):
- * - Central Meridian: 35° 12' 44.803"
- * - Latitude of Origin: 31° 44' 02.749"
- * - Scale Factor: 1.0000067
- * - False Easting: 219,529.584 m
- * - False Northing: -2,385,521.582 m
+ * - Central Meridian (lon_0): 35.204516667°
+ * - Latitude of Origin (lat_0): 31.734393611°
+ * - Scale Factor (k): 1.0000067
+ * - False Easting (x_0): 219,529.584 m
+ * - False Northing (y_0): 626,907.390 m
+ * - Ellipsoid: GRS80
  * - Datum: WGS84
- * - Ellipsoid: WGS84
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import proj4 from 'proj4'
+// ITM Projection Constants
+const ITM_PARAMS = {
+  lon_0: 35.204516667, // Central meridian
+  lat_0: 31.734393611, // Latitude of origin
+  k: 1.0000067,        // Scale factor
+  x_0: 219529.584,     // False easting
+  y_0: 626907.390,     // False northing
+  a: 6378137.0,        // WGS84 semi-major axis
+  e2: 0.00669438,      // WGS84 eccentricity squared
+}
 
 /**
- * Define Israeli Grid 1992 projection (EPSG:2039)
- * Using standard ITM parameters from Israeli Mapping Authority
+ * Pure JavaScript Transverse Mercator inverse transformation
+ * Converts ITM coordinates to WGS84 latitude/longitude
  */
-proj4.defs('EPSG:2039', '+proj=tmerc +lon_0=35.204516667 +lat_0=31.734393611 +k=1.0000067 +x_0=219529.584 +y_0=626907.390 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs')
+function itmToWgs84Transform(easting: number, northing: number): { lat: number; lon: number } {
+  const { lon_0, lat_0, k, x_0, y_0, a, e2 } = ITM_PARAMS
+
+  // Remove false easting/northing
+  const x = easting - x_0
+  const y = northing - y_0
+
+  // Remove scale factor
+  const M = y / k
+
+  // Calculate footpoint latitude
+  const e = Math.sqrt(e2)
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2))
+
+  const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256))
+  const phi1 = mu
+    + (3 * e1 / 2 - 27 * e1 * e1 * e1 / 32) * Math.sin(2 * mu)
+    + (21 * e1 * e1 / 16 - 55 * e1 * e1 * e1 * e1 / 32) * Math.sin(4 * mu)
+    + (151 * e1 * e1 * e1 / 96) * Math.sin(6 * mu)
+    + (1097 * e1 * e1 * e1 * e1 / 512) * Math.sin(8 * mu)
+
+  const C1 = e2 / (1 - e2) * Math.cos(phi1) * Math.cos(phi1)
+  const T1 = Math.tan(phi1) * Math.tan(phi1)
+  const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) * Math.sin(phi1))
+  const R1 = a * (1 - e2) / Math.sqrt((1 - e2 * Math.sin(phi1) * Math.sin(phi1)) ** 3)
+  const D = x / (N1 * k)
+
+  const lat = phi1 - (N1 * Math.tan(phi1) / R1) * (
+    D * D / 2
+    - (D * D * D * D / 24) * (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2 / (1 - e2))
+    + (D * D * D * D * D * D / 720) * (61 + 90 * T1 + 28 * T1 * T1 + 45 * C1 * C1 - 252 * e2 / (1 - e2) - 3 * C1 * C1 * C1 * C1)
+  )
+
+  const lon = (D - (D * D * D / 6) * (1 + 2 * T1 + C1)
+    + (D * D * D * D * D / 120) * (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * e2 / (1 - e2) + 24 * T1 * T1)) / Math.cos(phi1) + (lon_0 * Math.PI / 180)
+
+  return {
+    lat: lat * (180 / Math.PI),
+    lon: lon * (180 / Math.PI),
+  }
+}
 
 /**
  * Convert ITM (Israeli Grid 1992) coordinates to WGS84
+ * Uses pure JavaScript Transverse Mercator inverse transformation
  * @param itmNumber 12-digit ITM coordinate (XXXXXXYYYYYY format)
  * @returns {lat, lon} in WGS84 or null if invalid
  */
@@ -61,8 +102,8 @@ function itmToWgs84(itmNumber: string | number): { lat: number; lon: number } | 
       }
     }
 
-    // Use proj4 to convert from ITM to WGS84
-    const [lon, lat] = proj4('EPSG:2039', 'EPSG:4326', [easting, northing])
+    // Convert from ITM to WGS84 using Transverse Mercator inverse transformation
+    const { lat, lon } = itmToWgs84Transform(easting, northing)
 
     // Validate output (Israel bounds)
     if (lat < 29 || lat > 34 || lon < 34 || lon > 36) {
