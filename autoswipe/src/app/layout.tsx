@@ -28,21 +28,38 @@ export const metadata: Metadata = {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'AutoSwipe',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   openGraph: {
     title: 'AutoSwipe',
     description: 'גלה את הרכב הבא שלך בסוואיפ',
     type: 'website',
     locale: 'he_IL',
+    url: 'https://autoswipe.vercel.app',
+    siteName: 'AutoSwipe',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AutoSwipe',
+    description: 'גלה את הרכב הבא שלך בסוואיפ',
   },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#131318',
+  maximumScale: 5,
+  minimumScale: 1,
+  userScalable: true,
+  themeColor: '#D4A843',
   viewportFit: 'cover',
+  colorScheme: 'dark',
 }
 
 export default function RootLayout({
